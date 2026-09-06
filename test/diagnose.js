@@ -44,13 +44,14 @@ files.forEach(function (f) {
         .split("\n")
         .filter(function (line) {
           return (
-            /not ok|failureType|error:|Error/.test(line) ||
-            /^# (fail|tests)/.test(line)
+            /not ok|failureType|error:|Error|^\s+at |^\s+code:|^\s+path:/.test(
+              line
+            ) || /^# (fail|tests)/.test(line)
           );
         })
-        .slice(-12)
+        .slice(-20)
         .join("\n")
-        .slice(-1200);
+        .slice(-1800);
       console.log(
         "::error file=test/" +
           escapeAnnotation(f) +
