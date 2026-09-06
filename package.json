@@ -14,7 +14,7 @@
     "sarkari-digest": "./job-digest.js"
   },
   "scripts": {
-    "test": "node test/diagnose.js",
+    "test": "node --test test/*.test.js",
     "coverage": "node --test --experimental-test-coverage test/*.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
