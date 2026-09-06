@@ -1,0 +1,128 @@
+name: Scrape
+
+# Layer 2 — the scraper. Runs on a daily schedule as a fallback sweep, and
+# on demand: manually (workflow_dispatch), from the RSS watcher
+# (rss-watch.yml triggers it via `gh workflow run`), from reusable calls, or
+# from ANY external watcher via the repository_dispatch API (see
+# docs/AUTOMATION.md for the curl). Results are committed to data/.
+
+on:
+  schedule:
+    - cron: "30 1 * * *" # daily 01:30 UTC (~7 AM IST)
+  workflow_dispatch:
+    inputs:
+      domains:
+        description: "Space-separated job domains"
+        default: "sarkariresult.com sarkariexam.com sarkariresults.info freshersnow.com"
+      max-pages:
+        description: "List pages per domain"
+        default: "5"
+      max-jobs:
+        description: "Detail pages per domain (0 = no limit)"
+        default: "30"
+      reason:
+        description: "Why this run (rss-watch passes the new-item count)"
+        default: ""
+  repository_dispatch:
+    types: [rss-new-items]
+  workflow_call:
+    inputs:
+      domains:
+        type: string
+        default: "sarkariresult.com sarkariexam.com sarkariresults.info freshersnow.com"
+      max-pages:
+        type: string
+        default: "5"
+      max-jobs:
+        type: string
+        default: "30"
+      reason:
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape-data
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      DOMAINS: ${{ inputs.domains || 'sarkariresult.com sarkariexam.com sarkariresults.info freshersnow.com' }}
+      MAX_PAGES: ${{ inputs.max-pages || '5' }}
+      MAX_JOBS: ${{ inputs.max-jobs || '30' }}
+      REASON: ${{ inputs.reason || github.event.client_payload.reason || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Scrape job domains
+        run: |
+          mkdir -p data
+          for d in $DOMAINS; do
+            node run-scrapper.js -d "$d" -f json -o "data/jobs-$d.json" \
+              --max-pages "$MAX_PAGES" --max-jobs "$MAX_JOBS" --quiet \
+              || echo "::warning::scrape failed for $d"
+          done
+
+      - name: Scrape papers lists
+        run: |
+          for d in upsc.gov.in adda247.com; do
+            node scrap-paper-list.js -d "$d" -f json -o "data/papers-$d.json" \
+              --max-pages 5 --quiet \
+              || echo "::warning::papers list failed for $d"
+          done
+
+      - name: Build digest outputs
+        run: |
+          shopt -s nullglob
+          files=(data/jobs-*.json)
+          if [ ${#files[@]} -gt 0 ]; then
+            jq -s 'add // []' "${files[@]}" > data/jobs-all.json
+          else
+            echo '[]' > data/jobs-all.json
+          fi
+          node job-digest.js -i data/jobs-all.json --state data/digest.state.json \
+            --rss data/feed.xml --ics data/digest.ics --out data/digest.json --quiet
+
+      - name: Write run metadata
+        env:
+          TRIGGER: ${{ github.event_name }}
+        run: |
+          node -e "var fs=require('fs');fs.writeFileSync('data/lastrun.json',JSON.stringify({at:new Date().toISOString(),trigger:process.env.TRIGGER,reason:process.env.REASON,domains:process.env.DOMAINS.split(' ')},null,2)+'\n')"
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet && echo "no changes" || (git commit -m "data: scrape ($TRIGGER, $REASON)" && git push)
+        env:
+          TRIGGER: ${{ github.event_name }}
+
+      - name: Upload data artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-data
+          path: data/
+          retention-days: 30
+
+      - name: Alert on failure
+        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="sarkari-scraper: scheduled scrape FAILED (${TRIGGER}). ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          TRIGGER: ${{ github.event_name }}

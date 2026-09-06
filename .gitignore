@@ -108,4 +108,13 @@ dist/
 tmp/
 temp/
 
+# macOS
+.DS_Store
+
 # End of https://www.gitignore.io/api/node
+
+# Local SQLite notification archives (live in the workspace/Codespace only,
+# never committed — see docs/STORAGE.md)
+*.db
+*.sqlite
+*.sqlite3

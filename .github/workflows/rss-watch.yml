@@ -1,0 +1,62 @@
+name: RSS watch
+
+# Layer 1 — the news layer. Polls the feeds in feeds.txt every 30 minutes
+# and triggers the Scrape workflow when new items appear. Triggering another
+# workflow needs a non-default identity (GITHUB_TOKEN deliberately cannot do
+# it), so set a WATCH_PAT secret (classic PAT, `repo` scope — or fine-grained
+# with Actions read+write on this repo). Without it the watcher still records
+# state and reports, and you run Scrape manually.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rss-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Poll feeds
+        id: watch
+        run: node tools/rss-watch.js --feeds-file feeds.txt --state data/feed-state.json --quiet
+
+      - name: Commit watcher state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/feed-state.json
+          git diff --cached --quiet && echo "no state change" || (git commit -m "data: rss-watch state" && git push)
+
+      - name: Trigger scrape on new items
+        if: steps.watch.outputs.new-items == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.WATCH_PAT }}
+          COUNT: ${{ steps.watch.outputs.count }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::WATCH_PAT secret not set; cannot auto-trigger Scrape. Run it manually from the Actions tab (docs/AUTOMATION.md)."
+            exit 0
+          fi
+          gh workflow run scrape.yml --ref "${{ github.ref_name }}" -f reason="rss-watch: $COUNT new feed item(s)"
+
+      - name: Summary
+        if: always()
+        run: >-
+          echo "### RSS watch: ${{ steps.watch.outputs.count }} new item(s)." >> "$GITHUB_STEP_SUMMARY"

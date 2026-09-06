@@ -1,11 +1,16 @@
+"use strict";
+
 var cheerio = require("cheerio");
-var helper = require("../../utils/helper")
+var helper = require("../../utils/helper");
 
 function getShortData($, elem) {
   var data = {};
 
   data.key = helper.formatKey($(elem).find("td:nth-child(1)").text());
   data.value = helper.formatString($(elem).find("td:nth-child(2)").text());
+  if (data.key === null && data.value === null) {
+    return {};
+  }
   data.type = "String";
 
   return data;
@@ -14,16 +19,22 @@ function getShortData($, elem) {
 function getHeaderData($, elem) {
   var data = {};
 
-  var arr = [];
-
-  var i;
+  var arr = $(elem).find("span").toArray();
+  if (arr.length === 0) {
+    return {};
+  }
 
   data.key = "Header";
-
-  arr = $(elem).find("span").toArray();
   data.value = [];
+  var i;
   for (i = 0; i < arr.length; i++) {
-    data.value.push(helper.formatString($(arr[i]).text()));
+    var text = helper.formatString($(arr[i]).text());
+    if (text !== null) {
+      data.value.push(text);
+    }
+  }
+  if (data.value.length === 0) {
+    return {};
   }
   data.type = "List";
 
@@ -40,7 +51,7 @@ function getKey($, elem) {
   return data;
 }
 
-function getValueAndType($, elem) {
+function getValueAndType($, elem, pageUrl) {
   var data = {};
 
   var arr = [];
@@ -51,7 +62,10 @@ function getValueAndType($, elem) {
     arr = $(elem).find("li").toArray();
     data.value = [];
     for (i = 0; i < arr.length; i++) {
-      data.value.push(helper.formatString($(arr[i]).text()));
+      var text = helper.formatString($(arr[i]).text());
+      if (text !== null) {
+        data.value.push(text);
+      }
     }
     data.type = "List";
   } else if ($(elem).find("a").length > 0) {
@@ -60,7 +74,7 @@ function getValueAndType($, elem) {
     for (i = 0; i < arr.length; i++) {
       data.value.push({
         text: helper.formatString($(arr[i]).text()),
-        link: helper.formatString($(arr[i]).attr("href"))
+        link: helper.formatLink(pageUrl, $(arr[i]).attr("href")),
       });
     }
     data.type = "Link";
@@ -69,7 +83,7 @@ function getValueAndType($, elem) {
   return data;
 }
 
-function getTableData($, trArr, i) {
+function getTableData($, trArr, i, pageUrl) {
   var data = {};
 
   var valueArr = [];
@@ -91,18 +105,18 @@ function getTableData($, trArr, i) {
     }
     temp1 = [];
     for (k = 0; k < arr.length; k++) {
-      temp2 = getValueAndType($, arr[k]);
+      temp2 = getValueAndType($, arr[k], pageUrl);
       if (temp2.value === undefined) {
         temp2.value = helper.formatString($(arr[k]).text());
         temp2.type = "String";
       }
       temp3 = helper.formatString($(arr[k]).attr("rowspan"));
       if (temp3) {
-        temp2.rowspan = temp3
+        temp2.rowspan = temp3;
       }
       temp3 = helper.formatString($(arr[k]).attr("colspan"));
       if (temp3) {
-        temp2.colspan = temp3
+        temp2.colspan = temp3;
       }
       temp1.push(temp2);
     }
@@ -113,27 +127,21 @@ function getTableData($, trArr, i) {
   data.value = valueArr;
   data.type = "Table";
 
-  return { data, index };
+  return { data: data, index: index };
 }
 
 function isTable($, elem) {
-  var result = false;
-
-  if ($(elem).find("p").length > 0) {
-    result = true;
-  }
-
-  return result;
+  return $(elem).find("p").length > 0;
 }
 
-function getCellData($, elem) {
+function getCellData($, elem, pageUrl) {
   var data = {};
   var temp;
 
   temp = getKey($, elem);
   Object.assign(data, temp);
 
-  temp = getValueAndType($, elem);
+  temp = getValueAndType($, elem, pageUrl);
   Object.assign(data, temp);
 
   temp = helper.formatString($(elem).text());
@@ -144,30 +152,40 @@ function getCellData($, elem) {
   return data;
 }
 
-function mergeKeyValue(json) {
+// Join label-only cells with the value cells that follow them (section
+// headings, "useful links" label/link pairs, tables preceded by a title).
+// The key always comes from the label element; value/type from the content.
+function mergeKeyValue(json, linkSectionKey) {
   var data = [];
   var linkSection = false;
   var i;
 
-  for (i = 0; i < json.length - 1; i++) {
-    if ((linkSection || json[i + 1].type === "Table") && json[i + 1].value && json[i].value === undefined) {
-      data.push({
-        ...json[i],
-        ...json[i + 1]
-      });
+  for (i = 0; i < json.length; i++) {
+    var curr = json[i];
+    var nxt = json[i + 1];
+    if (
+      nxt !== undefined &&
+      (linkSection || nxt.type === "Table") &&
+      nxt.value !== undefined &&
+      curr.value === undefined
+    ) {
+      var merged = Object.assign({}, nxt);
+      if (curr.key !== undefined) {
+        merged.key = curr.key;
+      }
+      data.push(merged);
       i++;
     } else {
-      data.push(json[i]);
+      data.push(curr);
     }
 
-    if (json[i].key === "Some Useful Important Links") {
+    if (curr.key === linkSectionKey) {
       linkSection = true;
     }
   }
 
   return data;
 }
-
 
 function scrapJobDetail(html, url) {
   var $ = cheerio.load(html);
@@ -188,18 +206,18 @@ function scrapJobDetail(html, url) {
     value: [
       {
         text: "Link",
-        link: url
-      }
+        link: url,
+      },
     ],
-    type: "Link"
+    type: "Link",
   });
 
   // Extract Table 1
   arr1 = $("div[align='left'] table").eq(0).find("tr").toArray();
   for (i = 0; i < arr1.length; i++) {
-    if ($(arr1[i]).find("td").length == 2) {
+    if ($(arr1[i]).find("td").length === 2) {
       temp = getShortData($, arr1[i]);
-      if (helper.isObjectEmpty(temp) == false) {
+      if (!helper.isDataEmpty(temp)) {
         data.push(temp);
       }
     }
@@ -209,28 +227,35 @@ function scrapJobDetail(html, url) {
   arr1 = $("div[align='left'] table").eq(1).find("tr").toArray();
   for (i = 0; i < arr1.length; i++) {
     if (isTable($, arr1[i])) {
-      temp = getTableData($, arr1, i);
-      if (helper.isObjectEmpty(temp.data) == false) {
+      temp = getTableData($, arr1, i, url);
+      if (!helper.isDataEmpty(temp.data)) {
         data.push(temp.data);
       }
       i = temp.index;
+      if (i >= arr1.length) {
+        break;
+      }
     }
     arr2 = $(arr1[i]).find("td").toArray();
     for (j = 0; j < arr2.length; j++) {
-      if (i == 0 && j == 0) {
+      if (i === 0 && j === 0) {
         temp = getHeaderData($, arr2[j]);
       } else {
-        temp = getCellData($, arr2[j]);
+        temp = getCellData($, arr2[j], url);
       }
-      if (helper.isObjectEmpty(temp) == false) {
+      if (!helper.isDataEmpty(temp)) {
         data.push(temp);
       }
     }
   }
 
-  data = mergeKeyValue(data);
+  data = mergeKeyValue(data, "Some Useful Important Links");
 
   return data;
 }
 
 module.exports.scrapJobDetail = scrapJobDetail;
+// Correctly-spelled alias; the old name stays for backwards compatibility.
+module.exports.scrapeJobDetail = scrapJobDetail;
+// Exposed for unit tests.
+module.exports.__internals = { mergeKeyValue: mergeKeyValue };
