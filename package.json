@@ -1,14 +1,41 @@
 {
   "name": "sarkari-scraper",
-  "version": "1.0.0",
-  "description": "A web scraper made to extract results from https://www.sarkariresult.com",
-  "main": "index.js",
+  "version": "1.8.0",
+  "description": "A web scraper made to extract results from government job listing sites",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "sarkari-job-list": "./scrap-job-list.js",
+    "sarkari-job-detail": "./scrap-job-detail.js",
+    "sarkari-paper-list": "./scrap-paper-list.js",
+    "sarkari-paper-detail": "./scrap-paper-detail.js",
+    "sarkari-scrape": "./run-scrapper.js",
+    "sarkari-digest": "./job-digest.js"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/*.test.js",
+    "coverage": "node --test --experimental-test-coverage test/*.test.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "new-source": "node tools/new-source.js",
+    "notify-db": "node tools/notify-db.js",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{md,yml,json}": [
+      "prettier --write"
+    ]
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kaushalmeena1996/sarkari-scraper.git"
+    "url": "git+https://github.com/bihar24/sarkari-scraper.git"
   },
   "keywords": [
     "sarkari",
@@ -16,16 +43,24 @@
     "axios",
     "cheerio"
   ],
-  "author": "",
+  "author": "Bihar24",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/kaushalmeena1996/sarkari-scraper/issues"
+    "url": "https://github.com/bihar24/sarkari-scraper/issues"
   },
-  "homepage": "https://github.com/kaushalmeena1996/sarkari-scraper#readme",
+  "homepage": "https://github.com/bihar24/sarkari-scraper#readme",
   "dependencies": {
-    "axios": "^0.19.0",
-    "cheerio": "^1.0.0-rc.3",
-    "json2csv": "^4.5.3",
-    "table": "^5.4.6"
+    "axios": "^1.20.0",
+    "cheerio": "^1.2.0",
+    "json2csv": "^5.0.7",
+    "sql.js": "^1.14.2",
+    "table": "^6.9.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.0",
+    "prettier": "^3.9.6"
   }
 }

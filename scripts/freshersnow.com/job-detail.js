@@ -1,7 +1,9 @@
+"use strict";
+
 var cheerio = require("cheerio");
 var helper = require("../../utils/helper");
 
-function getValueAndType($, elem) {
+function getValueAndType($, elem, pageUrl) {
   var data = {};
 
   var temp1;
@@ -16,12 +18,15 @@ function getValueAndType($, elem) {
   var arr2 = [];
   var arr3 = [];
 
-  switch ($(elem).prop("tagName")) {
+  switch (helper.tagName($, elem)) {
     case "UL":
       data.value = [];
       arr1 = $(elem).find("li").toArray();
       for (i = 0; i < arr1.length; i++) {
-        data.value.push(helper.formatString($(arr1[i]).text()));
+        var item = helper.formatString($(arr1[i]).text());
+        if (item !== null) {
+          data.value.push(item);
+        }
       }
       data.type = "List";
       break;
@@ -29,7 +34,7 @@ function getValueAndType($, elem) {
       data.value = [];
       arr1 = $(elem).find("tr").toArray();
       for (i = 0; i < arr1.length; i++) {
-        temp1 = []
+        temp1 = [];
         arr2 = $(arr1[i]).find("td").toArray();
         for (j = 0; j < arr2.length; j++) {
           temp2 = {};
@@ -39,8 +44,8 @@ function getValueAndType($, elem) {
             for (k = 0; k < arr3.length; k++) {
               temp3.push({
                 text: helper.formatString($(arr3[k]).text()),
-                link: helper.formatString($(arr3[k]).attr("href")),
-              })
+                link: helper.formatLink(pageUrl, $(arr3[k]).attr("href")),
+              });
             }
             temp2.value = temp3;
             temp2.type = "Link";
@@ -51,11 +56,11 @@ function getValueAndType($, elem) {
 
           temp3 = helper.formatString($(arr2[j]).attr("rowspan"));
           if (temp3) {
-            temp2.rowspan = temp3
+            temp2.rowspan = temp3;
           }
           temp3 = helper.formatString($(arr2[j]).attr("colspan"));
           if (temp3) {
-            temp2.colspan = temp3
+            temp2.colspan = temp3;
           }
 
           temp1.push(temp2);
@@ -65,7 +70,7 @@ function getValueAndType($, elem) {
       data.type = "Table";
       break;
     default:
-      data.value = $(elem).text();
+      data.value = helper.formatString($(elem).text());
       data.type = "String";
   }
 
@@ -80,7 +85,7 @@ function getKey($, elem) {
   return data;
 }
 
-function getSectionData($, childArr, i) {
+function getSectionData($, childArr, i, pageUrl) {
   var data = {};
   var temp;
   var index;
@@ -88,12 +93,15 @@ function getSectionData($, childArr, i) {
   temp = getKey($, childArr[i]);
   Object.assign(data, temp);
 
-  temp = getValueAndType($, childArr[i + 1]);
-  Object.assign(data, temp);
+  if (childArr[i + 1] !== undefined) {
+    temp = getValueAndType($, childArr[i + 1], pageUrl);
+    Object.assign(data, temp);
+    index = i + 1; // skip row as it is already traversed by getValueAndType
+  } else {
+    index = i;
+  }
 
-  index = i + 1; // skip row as it is already traversed by getValueAndType
-
-  return { data, index };
+  return { data: data, index: index };
 }
 
 function scrapJobDetail(html, url) {
@@ -113,17 +121,18 @@ function scrapJobDetail(html, url) {
     value: [
       {
         text: "Link",
-        link: url
-      }
+        link: url,
+      },
     ],
-    type: "Link"
+    type: "Link",
   });
 
   arr = $(".td-post-content").children().toArray();
   for (i = 0; i < arr.length; i++) {
-    if ($(arr[i]).prop("tagName") == "H2" || $(arr[i]).prop("tagName") == "H3") {
-      temp = getSectionData($, arr, i);
-      if (helper.isObjectEmpty(temp.data) == false) {
+    var tag = helper.tagName($, arr[i]);
+    if (tag === "H2" || tag === "H3") {
+      temp = getSectionData($, arr, i, url);
+      if (!helper.isDataEmpty(temp.data)) {
         data.push(temp.data);
       }
       i = temp.index;
@@ -134,3 +143,5 @@ function scrapJobDetail(html, url) {
 }
 
 module.exports.scrapJobDetail = scrapJobDetail;
+// Correctly-spelled alias; the old name stays for backwards compatibility.
+module.exports.scrapeJobDetail = scrapJobDetail;
