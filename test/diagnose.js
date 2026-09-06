@@ -15,6 +15,38 @@ function escapeAnnotation(text) {
     .replace(/\n/g, "%0A");
 }
 
+var ROOT = path.resolve(__dirname, "..");
+
+// Phase 0: require-probes with full stack capture. Isolates which module's
+// load throws on this Node version (Node 18 file-crashes print no stack).
+var PROBES = [
+  "cheerio",
+  "./utils/helper",
+  "sql.js",
+  "./utils/notifydb",
+  "./utils/bloom",
+  "./utils/http",
+  "axios",
+  "table",
+  "json2csv",
+  "./utils/sources",
+  "./utils/digest",
+  "./utils/feed",
+];
+
+PROBES.forEach(function (mod) {
+  var result = cp.spawnSync(
+    process.execPath,
+    ["-e", "require(" + JSON.stringify(mod) + ");console.log('PROBE-OK');"],
+    { encoding: "utf8", timeout: 60000, cwd: ROOT }
+  );
+  var err = (result.stderr || "").split("\n").slice(0, 6).join("\n");
+  console.log(
+    "::warning::" +
+      escapeAnnotation("PROBE " + mod + ": exit=" + result.status + "\n" + err)
+  );
+});
+
 var files = fs
   .readdirSync(__dirname)
   .filter(function (f) {
