@@ -58,10 +58,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -119,10 +119,20 @@ jobs:
           retention-days: 30
 
       - name: Alert on failure
-        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d text="sarkari-scraper: scheduled scrape FAILED (${TRIGGER}). ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        # `secrets` is NOT available in `if:` conditions (parse-time
+        # validation rejects it with "Unrecognized named-value"), so the
+        # alert is gated by `failure()` here and the secret check happens
+        # inside the shell step instead.
+        if: failure()
         env:
           TRIGGER: ${{ github.event_name }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "::notice::Telegram secrets not configured; skipping alert."
+            exit 0
+          fi
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="$TELEGRAM_CHAT_ID" \
+            -d text="sarkari-scraper: scheduled scrape FAILED (${TRIGGER}). ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
