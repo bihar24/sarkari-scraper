@@ -288,7 +288,7 @@ npm audit          # check dependencies for known vulnerabilities
 ```
 
 A pre-commit hook (husky + lint-staged) runs ESLint and Prettier on staged
-files. CI runs lint, format check, tests (Node 18/20/22) and `npm audit` on
+files. CI runs lint, format check, tests (Node 22/24) and `npm audit` on
 every push/PR. See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 Project layout:

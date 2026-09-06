@@ -25,6 +25,13 @@ All notable changes to this project are documented here. The format follows
   throw; watcher title fallback; scaffold domain-length cap (ReDoS bound).
 - Scrape workflow uploads its data artifact even on failure.
 
+### Changed
+
+- **Breaking:** requires Node.js 22+ (engines `>=22`, CI on 22/24).
+  Node 18 and 20 are end-of-life, and cheerio 1.2's undici dependency
+  reads the global `File` (Node 20+) at load time, so Node 18 can no
+  longer run the parsers.
+
 ## [1.7.0] - 2026-09-07
 
 ### Added

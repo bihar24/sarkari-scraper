@@ -1,7 +1,7 @@
 "use strict";
 
 // Notification archive: a single-file SQLite database (via sql.js — pure
-// WASM, no native builds, runs on Node 18+) holding EVERY notification ever
+// WASM, no native builds, runs on Node 22+) holding EVERY notification ever
 // sent, plus its own Bloom filter for fast "already notified?" pre-checks.
 //
 // Two-tier lookup: the in-memory Bloom filter answers instantly; a negative

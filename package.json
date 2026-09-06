@@ -3,7 +3,7 @@
   "version": "1.8.0",
   "description": "A web scraper made to extract results from government job listing sites",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "bin": {
     "sarkari-job-list": "./scrap-job-list.js",

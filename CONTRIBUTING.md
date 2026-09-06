@@ -13,7 +13,7 @@ npm run lint
 npm run format:check
 ```
 
-CI runs lint, format check, tests (Node 18/20/22) and `npm audit` on every
+CI runs lint, format check, tests (Node 22/24) and `npm audit` on every
 push/PR. A pre-commit hook auto-fixes staged files.
 
 ## Adding a source (jobs or papers)

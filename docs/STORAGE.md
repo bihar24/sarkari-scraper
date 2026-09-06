@@ -24,7 +24,7 @@ the archive below backstops.
 
 `job-digest.js --db notifications.db` records every **successfully sent**
 alert in a single-file SQLite database (via `sql.js` — pure WASM, no native
-builds, works on Node 18+ and in Codespaces):
+builds, works on Node 22+ and in Codespaces):
 
 ```sh
 node job-digest.js -i jobs.json --alert telegram --db notifications.db
