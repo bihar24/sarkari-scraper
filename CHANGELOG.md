@@ -3,6 +3,25 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.1] - 2026-09-07
+
+### Fixed
+
+- Scrape workflow could never start: the Telegram alert step referenced
+  `secrets.*` inside its `if:` condition, which GitHub Actions rejects at
+  parse time (`Unrecognized named-value: 'secrets'`). Every trigger
+  (push, manual run, schedule, `repository_dispatch`) ended in a
+  `startup_failure` before any step executed. The alert is now gated by
+  `if: failure()` with the secret check moved into the step shell.
+- Scrape and RSS-watch workflows ran on Node.js 20 despite the project's
+  `>=22` requirement; both now use Node.js 22.
+
+### Added
+
+- `actionlint` job in CI to validate workflow files on every push, so
+  invalid workflow syntax fails fast in CI instead of surfacing as a
+  silent `startup_failure` on GitHub's side.
+
 ## [1.8.0] - 2026-09-07
 
 ### Added
