@@ -41,10 +41,10 @@ function resolveProxy(proxyUrl) {
   try {
     parsed = new URL(raw);
   } catch (err) {
-    throw new Error('Invalid proxy URL "' + raw + '".');
+    throw new Error("Invalid proxy URL (value redacted).");
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error('Proxy URL must use http(s): "' + raw + '".');
+    throw new Error("Proxy URL must use http(s) (value redacted).");
   }
   var config = {
     protocol: parsed.protocol.replace(":", ""),
@@ -113,12 +113,44 @@ function finalUrl(response) {
   return response && response.config ? response.config.url : undefined;
 }
 
+// URLs can contain tokens, proxy passwords and secret webhook paths. Never
+// include the path/query of a failed write request in logs.
+function redactUrl(raw, hidePath) {
+  try {
+    var parsed = new URL(raw);
+    parsed.username = "";
+    parsed.password = "";
+    parsed.hash = "";
+    if (
+      hidePath ||
+      /\/bot[^/]+\//.test(parsed.pathname) ||
+      /webhooks|\/services\//i.test(parsed.pathname)
+    ) {
+      parsed.pathname = "/[redacted]";
+    }
+    if (parsed.search) parsed.search = "?[redacted]";
+    return parsed.toString();
+  } catch (err) {
+    return "[invalid or redacted URL]";
+  }
+}
+
+function redactMessage(message) {
+  return String(message).replace(/https?:\/\/[^\s"'<>]+/gi, function (value) {
+    return redactUrl(value, true);
+  });
+}
+
 // One-line, log-friendly summary of an axios failure (the raw error object
 // dumps config, stack traces and byte buffers into the console).
 function describeError(error) {
   if (!error) {
     return "unknown error";
   }
+  var hidePath =
+    error.config &&
+    error.config.method &&
+    !/^(get|head)$/i.test(error.config.method);
   if (error.response) {
     var status = error.response.status;
     var statusText = error.response.statusText || "";
@@ -126,10 +158,20 @@ function describeError(error) {
       (error.config && error.config.url) ||
       (error.response.config && error.response.config.url) ||
       "";
-    return ("HTTP " + status + " " + statusText + " for " + url).trim();
+    return (
+      "HTTP " +
+      status +
+      " " +
+      statusText +
+      " for " +
+      (url ? redactUrl(url, hidePath) : "")
+    ).trim();
   }
   if (error.request) {
-    var reqUrl = (error.config && error.config.url) || "";
+    var reqUrl =
+      error.config && error.config.url
+        ? redactUrl(error.config.url, hidePath)
+        : "";
     if (error.code === "ECONNABORTED" || /timeout/i.test(error.message || "")) {
       return "request timed out for " + reqUrl;
     }
@@ -140,7 +182,7 @@ function describeError(error) {
       reqUrl
     ).trim();
   }
-  return error.message || String(error);
+  return redactMessage(error.message || String(error));
 }
 
 module.exports.createClient = createClient;
@@ -148,3 +190,5 @@ module.exports.finalUrl = finalUrl;
 module.exports.describeError = describeError;
 module.exports.resolveProxy = resolveProxy;
 module.exports.noProxyMatch = noProxyMatch;
+
+module.exports.redactUrl = redactUrl;

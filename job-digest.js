@@ -738,7 +738,7 @@ async function main() {
   // --- Alerts (fresh jobs only, unless --all) ---
 
   var notifyDb = null;
-  if (values.db) {
+  if (values.db && !values.dryRun) {
     try {
       notifyDb = await notifydb.openNotifyDb(values.db);
     } catch (error) {
@@ -894,7 +894,7 @@ async function main() {
   }
 
   try {
-    digest.saveState(statePath, state);
+    if (!values.dryRun) digest.saveState(statePath, state);
   } catch (error) {
     log.error("could not write state to " + statePath + ": " + error.message);
     process.exit(1);

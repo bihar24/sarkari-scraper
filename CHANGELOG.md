@@ -3,6 +3,37 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.0] - 2026-09-07
+
+### Added
+
+- Sarkari Explorer: original bilingual, responsive dashboard for jobs, schemes,
+  policies and paper links, browser-local bookmarks, source/health views and
+  developer API discovery. No frontend build or hosted database required.
+- `sarkari-catalog` / `npm run catalog:import`: import the pinned Bihar Scheme
+  Tracker YAML catalogue from GitHub or a local checkout, plus existing scraper
+  JSON. Imported CC BY-SA 4.0 data retains attribution, original evidence and
+  verification dates, unknown figures and complete source records.
+- Optional captn3m0 historical domain-directory import with strict hostname
+  parsing, deduplication and advisory classification. No mass crawling,
+  automatic parser activation or ownership claims; upstream licence unknown.
+- Versioned read-only API, filtered JSON/CSV/RSS/ICS exports, atomic catalogue
+  writes, writer locks, content-change detection and last-good snapshot retention.
+- Public Node entry point/types, product documentation, licence notices and
+  Docker/Compose setup with a persistent runtime volume.
+
+### Fixed
+
+- Crawler robots checks now run for every followed page/redirect. Off-site
+  redirects are rejected by default, not merely warned about after fetching.
+- Full job crawls with no usable links retain the existing output and fail;
+  source-link-only details are reported as failed extractions.
+- Failed request logs redact URL credentials, tokens, queries and POST paths.
+- Notification dry runs no longer consume live dedupe state or create SQLite
+  archives. Legacy multi-transport delivery semantics otherwise remain unchanged.
+- Labelled deadlines inside lists/tables are recognized by the digest model.
+- README Node requirement and package-lock root metadata now match the package.
+
 ## [1.8.1] - 2026-09-07
 
 ### Fixed

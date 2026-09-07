@@ -1,5 +1,23 @@
 # Security
 
+## Explorer boundary (v1.9)
+
+The catalogue HTTP service is read-only and serves only explicitly allowed
+assets/endpoints. Browser requests cannot fetch arbitrary URLs, start scrapes,
+write files, or run imports. CORS is public: only import public, redacted
+data. The UI escapes source text and validates link protocols; JSON clients
+must still treat content as untrusted. Domain-directory membership is not an
+authority check or network allowlist. Imported tracker material retains its
+own licence and evidence. See [PRODUCT.md](PRODUCT.md) and
+[THIRD_PARTY.md](../THIRD_PARTY.md).
+
+Crawler page/redirect requests now receive robots checks; POST error paths and
+secret URL components are redacted. Notification previews do not mutate live
+state. The legacy multi-transport batch/quarantine limitations remain; the
+new HTTP service does not send notifications.
+
+## Scraper and digest
+
 Threat model: **scraped content is untrusted input.** Job titles, links,
 descriptions and feed items come from third-party sites (or compromised
 ones) and flow into structured outputs — feeds, calendars, chat messages,

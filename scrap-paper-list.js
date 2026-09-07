@@ -117,6 +117,11 @@ async function main() {
     fail(error.message);
   }
   log = rt.log;
+  var crawlClient = runtime.createCrawlClient(rt, {
+    domain: values.domain,
+    allowExternal: values.allowExternal,
+    ignoreRobots: values.ignoreRobots,
+  });
 
   if (sources.statusOf(values.domain, "papers") === "beta") {
     log.warn(
@@ -145,7 +150,7 @@ async function main() {
     result = await crawl.crawlJobList({
       scrapFn: paperList.scrapPaperList,
       startUrl: paperList.papersListUrl,
-      client: rt.client,
+      client: crawlClient,
       maxPages: values.maxPages,
       delayMs: values.delayMs,
       sameSiteDomain: values.allowExternal ? null : values.domain,
