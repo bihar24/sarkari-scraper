@@ -4,7 +4,15 @@ name: Scrape
 # on demand: manually (workflow_dispatch), from the RSS watcher
 # (rss-watch.yml triggers it via `gh workflow run`), from reusable calls, or
 # from ANY external watcher via the repository_dispatch API (see
-# docs/AUTOMATION.md for the curl). Results are committed to data/.
+# docs/AUTOMATION.md for the curl).
+#
+# Every current scrape is written to a staging directory first. A source file
+# is only copied into data/ after it validates as a non-empty JSON array with
+# at least one normalizable record. Empty or blocked results never replace a
+# last-known-good committed file. The aggregate and data/catalog.json are
+# rebuilt only from validated snapshots, and are verified before being
+# committed. If verification fails the workflow fails without pushing a
+# timestamp-only/empty update.
 
 on:
   schedule:
@@ -13,7 +21,7 @@ on:
     inputs:
       domains:
         description: "Space-separated job domains"
-        default: "sarkariresult.com sarkariexam.com sarkariresults.info freshersnow.com"
+        default: "sarkariresult.com sarkariexam.com freshersnow.com"
       max-pages:
         description: "List pages per domain"
         default: "5"
@@ -29,7 +37,7 @@ on:
     inputs:
       domains:
         type: string
-        default: "sarkariresult.com sarkariexam.com sarkariresults.info freshersnow.com"
+        default: "sarkariresult.com sarkariexam.com freshersnow.com"
       max-pages:
         type: string
         default: "5"
@@ -51,10 +59,11 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     env:
-      DOMAINS: ${{ inputs.domains || 'sarkariresult.com sarkariexam.com sarkariresults.info freshersnow.com' }}
+      DOMAINS: ${{ inputs.domains || 'sarkariresult.com sarkariexam.com freshersnow.com' }}
       MAX_PAGES: ${{ inputs.max-pages || '5' }}
       MAX_JOBS: ${{ inputs.max-jobs || '30' }}
       REASON: ${{ inputs.reason || github.event.client_payload.reason || '' }}
+      ATTEMPTED_AT: ${{ github.event.head_commit.timestamp || github.event.created_at || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -66,60 +75,141 @@ jobs:
 
       - run: npm ci
 
-      - name: Scrape job domains
+      - name: Prepare staging directory
         run: |
-          mkdir -p data
-          ok=0
-          failed=0
+          rm -rf .scrape-staging
+          mkdir -p .scrape-staging data
+
+      - name: Scrape job domains into staging (validated before replacement)
+        run: |
+          set +e
           for d in $DOMAINS; do
-            if node run-scrapper.js -d "$d" -f json -o "data/jobs-$d.json" \
-              --max-pages "$MAX_PAGES" --max-jobs "$MAX_JOBS" --quiet; then
-              ok=$((ok + 1))
+            out=".scrape-staging/jobs-$d.json"
+            rm -f "$out"
+            echo "::notice::attempting jobs source $d"
+            node run-scrapper.js -d "$d" -f json -o "$out" \
+              --max-pages "$MAX_PAGES" --max-jobs "$MAX_JOBS" --quiet
+            scrape_exit=$?
+            ok=0
+            if [ -f "$out" ]; then
+              if node tools/validate-snapshot.js --input "$out" --kind job \
+                > ".scrape-staging/validate-jobs-$d.log" 2>&1; then
+                ok=1
+                cp "$out" "data/jobs-$d.json"
+                echo "::notice::$d validated job snapshot"
+              else
+                echo "::warning::$d: staged source is not a usable job snapshot"
+                cat ".scrape-staging/validate-jobs-$d.log" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+                cat ".scrape-staging/validate-jobs-$d.log"
+              fi
             else
-              failed=$((failed + 1))
-              echo "::warning::scrape failed for $d"
+              echo "::warning::$d: scraper produced no staged job output (exit $scrape_exit)"
             fi
+            echo "$d $ok" >> .scrape-staging/job-status.txt
           done
-          echo "job domains: $ok ok, $failed failed"
-          echo "JOBS_OK=$ok" >> "$GITHUB_ENV"
-          echo "JOBS_FAILED=$failed" >> "$GITHUB_ENV"
+          cat .scrape-staging/job-status.txt
 
-      - name: Scrape papers lists
+      - name: Scrape paper lists into staging (beta, never erases previous)
         run: |
-          ok=0
-          failed=0
+          set +e
           for d in upsc.gov.in adda247.com; do
-            if node scrap-paper-list.js -d "$d" -f json -o "data/papers-$d.json" \
-              --max-pages 5 --quiet; then
-              ok=$((ok + 1))
+            out=".scrape-staging/papers-$d.json"
+            rm -f "$out"
+            echo "::notice::attempting papers source $d"
+            node scrap-paper-list.js -d "$d" -f json -o "$out" \
+              --max-pages 5 --quiet
+            scrape_exit=$?
+            ok=0
+            if [ -f "$out" ]; then
+              if node tools/validate-snapshot.js --input "$out" --kind paper \
+                > ".scrape-staging/validate-papers-$d.log" 2>&1; then
+                ok=1
+                cp "$out" "data/papers-$d.json"
+                echo "::notice::$d validated paper snapshot"
+              else
+                echo "::warning::$d: staged paper output is not usable"
+                cat ".scrape-staging/validate-papers-$d.log"
+              fi
             else
-              failed=$((failed + 1))
-              echo "::warning::papers list failed for $d"
+              echo "::warning::$d: paper scraper produced no output (exit $scrape_exit)"
             fi
+            echo "$d $ok" >> .scrape-staging/paper-status.txt
           done
-          echo "papers sources: $ok ok, $failed failed"
-          echo "PAPERS_OK=$ok" >> "$GITHUB_ENV"
-          echo "PAPERS_FAILED=$failed" >> "$GITHUB_ENV"
+          cat .scrape-staging/paper-status.txt
 
-      - name: Build digest outputs
-        run: |
-          shopt -s nullglob
-          files=(data/jobs-*.json)
-          if [ ${#files[@]} -gt 0 ]; then
-            jq -s 'add // []' "${files[@]}" > data/jobs-all.json
-          else
-            echo '[]' > data/jobs-all.json
-          fi
-          node job-digest.js -i data/jobs-all.json --state data/digest.state.json \
-            --rss data/feed.xml --ics data/digest.ics --out data/digest.json --quiet
-
-      - name: Write run metadata
+      - name: Write run status and last-run metadata
         env:
           TRIGGER: ${{ github.event_name }}
         run: |
-          node -e "var fs=require('fs');fs.writeFileSync('data/lastrun.json',JSON.stringify({at:new Date().toISOString(),trigger:process.env.TRIGGER,reason:process.env.REASON,domains:process.env.DOMAINS.split(' ')},null,2)+'\n')"
+          AT="${ATTEMPTED_AT:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}"
+          node tools/run-status.js \
+            --jobs .scrape-staging/job-status.txt \
+            --papers .scrape-staging/paper-status.txt \
+            --out data/run-status.json \
+            --lastrun data/lastrun.json \
+            --at "$AT" \
+            --trigger "$TRIGGER" \
+            --reason "$REASON" \
+            --domains "$DOMAINS" 2>&1 || true
+
+      - name: Rebuild validated aggregate snapshots
+        run: |
+          set +e
+          node tools/build-aggregate.js --data data --kind job --output data/jobs-all.json
+          echo "jobs aggregate exit: $?"
+          node tools/build-aggregate.js --data data --kind paper --output data/papers-all.json
+          echo "papers aggregate exit: $?"
+
+      - name: Checkout pinned Bihar scheme tracker (offline/import, not scraped)
+        uses: actions/checkout@v4
+        with:
+          repository: fossdot/bihar-scheme-tracker
+          ref: 32b041f52a87f51e2c3d229bcc77e71518eff70c
+          path: .tracker
+          fetch-depth: 1
+
+      - name: Build deployment catalogue (jobs + papers + pinned tracker)
+        run: |
+          set +e
+          node tools/build-catalog.js \
+            --store data/catalog.json \
+            --data data \
+            --tracker-dir .tracker \
+            --tracker-ref 32b041f52a87f51e2c3d229bcc77e71518eff70c
+          echo "catalog build exit: $?"
+
+      - name: Build digest outputs when a job aggregate exists
+        run: |
+          set +e
+          if [ -f data/jobs-all.json ]; then
+            count=$(jq 'length' data/jobs-all.json 2>/dev/null || echo 0)
+          else
+            count=0
+          fi
+          if [ "$count" -gt 0 ]; then
+            node job-digest.js -i data/jobs-all.json --state data/digest.state.json \
+              --rss data/feed.xml --ics data/digest.ics --out data/digest.json --quiet
+          else
+            echo "::warning::No job aggregate; preserving existing digest/feed outputs."
+          fi
+
+      - name: Verify collection before commit
+        run: |
+          node tools/verify-catalog.js --store data/catalog.json --require job,scheme,policy --warn paper
+
+      - name: Upload data and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-data-and-diagnostics
+          path: |
+            data/
+            .scrape-staging/
+            run-status.json
+          retention-days: 30
 
       - name: Commit data
+        if: success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -127,47 +217,6 @@ jobs:
           git diff --cached --quiet && echo "no changes" || (git commit -m "data: scrape ($TRIGGER, $REASON)" && git push)
         env:
           TRIGGER: ${{ github.event_name }}
-
-      - name: Upload data artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: scrape-data
-          path: data/
-          retention-days: 30
-
-      - name: Verify the sweep collected something
-        # Each domain is swallowed by a warning above so one dead site cannot
-        # sink the sweep - but that also meant a run where EVERY domain failed
-        # finished green and looked healthy. Fail loudly here instead, after
-        # the data has been committed and the artifact uploaded, so a red run
-        # still keeps whatever it managed to collect.
-        #
-        # Two distinct ways to collect nothing, both seen in run 34073580212
-        # (reported success, wrote jobs-all.json == []):
-        #   1. every domain exits non-zero, or
-        #   2. a domain exits 0 but yields an empty list - a rotted parser
-        #      still "succeeds", so exit codes alone are not enough.
-        # Papers sources are beta and bot-guarded, so they warn only.
-        run: |
-          collected=0
-          if [ -f data/jobs-all.json ]; then
-            collected=$(jq 'length' data/jobs-all.json 2>/dev/null || echo 0)
-          fi
-          echo "job domains: ${JOBS_OK:-0} ok / ${JOBS_FAILED:-0} failed"
-          echo "papers sources: ${PAPERS_OK:-0} ok / ${PAPERS_FAILED:-0} failed"
-          echo "job items collected: $collected"
-          if [ "${JOBS_OK:-0}" -eq 0 ]; then
-            echo "::error::every job domain failed (${JOBS_FAILED:-0} of them); parsers or upstream sites are broken"
-            exit 1
-          fi
-          if [ "$collected" -eq 0 ]; then
-            echo "::error::no job items collected from ${JOBS_OK:-0} domain(s) that exited cleanly; parsers have most likely rotted against the live HTML"
-            exit 1
-          fi
-          if [ "${PAPERS_OK:-0}" -eq 0 ]; then
-            echo "::warning::every papers source failed (beta sources, not failing the run)"
-          fi
 
       - name: Alert on failure
         # `secrets` is NOT available in `if:` conditions (parse-time

@@ -122,3 +122,8 @@ temp/
 
 # Imported catalogues and third-party datasets are runtime data, not MIT source.
 .sarkari/
+
+# Scrape workflow staging and pinned tracker checkouts; committed final outputs
+# live in data/.
+.scrape-staging/
+.tracker/

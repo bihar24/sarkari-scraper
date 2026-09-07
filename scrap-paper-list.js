@@ -167,17 +167,22 @@ async function main() {
   log.info(
     "done: " + data.length + " exam(s) across " + result.pages + " page(s)."
   );
-  if (data.length === 0) {
-    log.warn(
-      "no exams found. The site markup may have changed; " +
-        "the parser in scripts/" +
-        values.domain +
-        "/papers-list.js may need updating."
-    );
-  }
   validate.checkPaperList(data).forEach(function (warning) {
     log.warn(warning);
   });
+  var usable = validate.countUsablePaperItems(data);
+  if (usable === 0) {
+    log.error(
+      result.blocked
+        ? "Blocked/error page (not a valid paper list) for " +
+            values.domain +
+            "; keeping the previous output file unchanged."
+        : "No usable paper items for " +
+            values.domain +
+            ". The source returned no valid HTML records, so the previous output file is kept unchanged."
+    );
+    process.exit(1);
+  }
 
   var output;
   try {

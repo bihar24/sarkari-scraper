@@ -522,9 +522,28 @@ test.describe("catalogue storage and imports", function () {
           },
         ])
       );
+      fs.writeFileSync(
+        path.join(dir, "run-status.json"),
+        JSON.stringify({
+          attemptedAt: "2026-09-07T02:00:00.000Z",
+          sources: [
+            {
+              domain: "sarkariresult.com",
+              type: "jobs",
+              status: "failed",
+              lastAttempt: "2026-09-07T02:00:00.000Z",
+              lastSuccess: null,
+            },
+          ],
+        })
+      );
       var snapshot = deployment.deploymentCatalogue(dir);
       assert.equal(snapshot.records.length, 1);
       assert.equal(snapshot.records[0].title.en, "Fixture deployment job");
+      assert.equal(
+        snapshot.sources["scrape:jobs:sarkariresult.com"].status,
+        "failed"
+      );
       assert.equal(
         snapshot.records[0].source.fetchedAt,
         "2026-09-07T01:02:03.000Z"
@@ -631,6 +650,78 @@ test.describe("read-only public API", function () {
         (await fetch(base + "/api/v1/opportunities/%ZZ")).status,
         400
       );
+    }
+  );
+  test.it(
+    "reports a degraded, unready health endpoint for an empty catalogue",
+    async function (t) {
+      var base = await app(t, { catalogue: store.empty() });
+      var health = await fetch(base + "/health");
+      assert.equal(health.status, 200);
+      var body = await health.json();
+      assert.equal(body.status, "degraded");
+      assert.equal(body.ready, false);
+      assert.equal(body.catalogue.total, 0);
+    }
+  );
+  test.it(
+    "serves a production-like snapshot through APIs, feed and health",
+    async function (t) {
+      var catalogue = store.empty();
+      store.applyGroup(catalogue, {
+        key: "tracker:schemes",
+        label: "Schemes",
+        records: [normalized()],
+      });
+      store.applyGroup(catalogue, {
+        key: "job:fixture",
+        label: "Jobs",
+        records: [
+          model.normalizeScraped({
+            postName: "Production-like fixture job",
+            link: "https://example.gov.in/job/1",
+            lastDate: "30-Sep-2026",
+          }),
+        ],
+      });
+      store.applyGroup(catalogue, {
+        key: "paper:fixture",
+        label: "Exam papers",
+        records: [
+          model.normalizeScraped(
+            {
+              exam: "SSC CGL",
+              title: "SSC CGL Papers",
+              link: "https://example.gov.in/paper/1",
+            },
+            { kind: "paper" }
+          ),
+        ],
+      });
+      store.applyGroup(catalogue, {
+        key: "tracker:policies",
+        label: "Policies",
+        records: [
+          normalized(
+            { name_en: "Production-like fixture policy" },
+            { kind: "policy" }
+          ),
+        ],
+      });
+      var base = await app(t, { catalogue: catalogue });
+      var meta = await (await fetch(base + "/api/v1")).json();
+      assert.equal(meta.stats.total, 4);
+      var opportunities = await (
+        await fetch(base + "/api/v1/opportunities")
+      ).json();
+      assert.equal(opportunities.total, 4);
+      assert.equal(opportunities.results.length, 4);
+      var feed = await (await fetch(base + "/feed.xml")).text();
+      assert.match(feed, /Production-like fixture job/);
+      assert.match(feed, /Production-like fixture policy/);
+      var health = await (await fetch(base + "/health")).json();
+      assert.equal(health.ready, true);
+      assert.equal(health.status, "ok");
     }
   );
   test.it(

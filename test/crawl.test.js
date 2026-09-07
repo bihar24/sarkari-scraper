@@ -113,6 +113,25 @@ describe("crawl.crawlJobList", function () {
     assert.equal(result.items.length, 1);
   });
 
+  it("flags block/error pages instead of returning an empty success", async function () {
+    var client = stubClient({
+      "https://site.test/p1":
+        "<html><title>Just a moment...</title><body>Cloudflare Ray ID</body></html>",
+    });
+    var result = await crawl.crawlJobList({
+      scrapFn: function () {
+        return { data: [], next: null };
+      },
+      startUrl: "https://site.test/p1",
+      client: client,
+      maxPages: 5,
+      delayMs: 0,
+    });
+    assert.equal(result.pages, 0);
+    assert.equal(result.items.length, 0);
+    assert.equal(result.blocked, true);
+  });
+
   it("refuses to follow off-site pagination when same-site is enforced", async function () {
     var client = stubClient({ "https://site.test/p1": "" });
     var result = await crawl.crawlJobList({

@@ -2,6 +2,7 @@
 
 var helper = require("./helper");
 var http = require("./http");
+var block = require("./block");
 
 // Walk a paginated job list. Guards against pagination cycles (visited set),
 // runaway crawls (maxPages) and off-site pagination traps
@@ -23,6 +24,7 @@ async function crawlJobList(options) {
   var items = [];
   var visited = new Set();
   var pages = 0;
+  var blocked = false;
 
   while (pageUrl && pages < maxPages) {
     if (visited.has(pageUrl)) {
@@ -33,6 +35,11 @@ async function crawlJobList(options) {
 
     var response = await client.get(pageUrl);
     var finalPageUrl = http.finalUrl(response) || pageUrl;
+    if (block.looksLikeBlockPage(response.data)) {
+      blocked = true;
+      log("Blocked/error page detected at " + finalPageUrl + "; stopping.");
+      break;
+    }
     var result = scrapFn(response.data, finalPageUrl) || {};
     var data = Array.isArray(result.data) ? result.data : [];
     items.push.apply(items, data);
@@ -66,7 +73,7 @@ async function crawlJobList(options) {
     log("Reached max-pages limit (" + maxPages + "); stopping.");
   }
 
-  return { items: items, pages: pages };
+  return { items: items, pages: pages, blocked: blocked };
 }
 
 module.exports.crawlJobList = crawlJobList;
