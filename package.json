@@ -1,7 +1,7 @@
 {
   "name": "sarkari-scraper",
-  "version": "1.8.0",
-  "description": "A web scraper made to extract results from government job listing sites",
+  "version": "1.9.0",
+  "description": "Government jobs, exam papers and evidence-linked schemes: scraping, catalogue imports, a read-only API and a bilingual explorer.",
   "engines": {
     "node": ">=22"
   },
@@ -11,7 +11,8 @@
     "sarkari-paper-list": "./scrap-paper-list.js",
     "sarkari-paper-detail": "./scrap-paper-detail.js",
     "sarkari-scrape": "./run-scrapper.js",
-    "sarkari-digest": "./job-digest.js"
+    "sarkari-digest": "./job-digest.js",
+    "sarkari-catalog": "./tools/catalog.js"
   },
   "scripts": {
     "test": "node --test test/*.test.js",
@@ -23,7 +24,12 @@
     "format:check": "prettier --check .",
     "new-source": "node tools/new-source.js",
     "notify-db": "node tools/notify-db.js",
-    "prepare": "husky"
+    "prepare": "husky",
+    "start": "node tools/catalog.js serve",
+    "demo": "node tools/catalog.js serve --demo",
+    "catalog:import": "node tools/catalog.js import",
+    "typecheck": "tsc --noEmit --strict --module node16 --moduleResolution node16 --target es2022 test/types-smoke.ts",
+    "test:browser": "node test/browser-smoke.mjs"
   },
   "lint-staged": {
     "*.js": [
@@ -55,14 +61,20 @@
     "cheerio": "^1.2.0",
     "json2csv": "^5.0.7",
     "sql.js": "^1.14.2",
-    "table": "^6.9.0"
+    "table": "^6.9.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
     "husky": "^9.1.7",
     "js-yaml": "^5.4.1",
     "lint-staged": "^17.5.0",
-    "prettier": "^3.9.6"
-  }
+    "playwright": "^1.63.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3"
+  },
+  "main": "index.js",
+  "types": "index.d.ts"
 }

@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bihar24/sarkari-scraper/schemas/opportunity.schema.json",
+  "title": "Sarkari opportunity v1",
+  "description": "Original integration schema. Source licences apply independently; verification dates are never import dates.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "kind",
+    "title",
+    "summary",
+    "categories",
+    "region",
+    "url",
+    "applyUrl",
+    "status",
+    "evidence",
+    "deadline",
+    "department",
+    "benefits",
+    "eligibility",
+    "links",
+    "source",
+    "original"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "collection": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": ["job", "scheme", "policy", "paper"]
+    },
+    "title": {
+      "type": "object",
+      "required": ["en", "hi"],
+      "properties": {
+        "en": {
+          "type": ["string", "null"]
+        },
+        "hi": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["en", "hi"],
+      "properties": {
+        "en": {
+          "type": ["string", "null"]
+        },
+        "hi": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "region": {
+      "enum": ["bihar", "india", null]
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://"
+    },
+    "applyUrl": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "status": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": ["string", "null"]
+    },
+    "deadline": {
+      "type": ["object", "null"],
+      "required": ["date", "raw", "purpose"],
+      "properties": {
+        "date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw": {
+          "type": ["string", "null"]
+        },
+        "purpose": {
+          "enum": ["application", "consultation"]
+        }
+      }
+    },
+    "department": {
+      "type": "object",
+      "required": ["en", "hi"],
+      "properties": {
+        "en": {
+          "type": ["string", "null"]
+        },
+        "hi": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "benefits": {
+      "type": "object",
+      "required": ["en", "hi"],
+      "properties": {
+        "en": {
+          "type": ["string", "null"]
+        },
+        "hi": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "eligibility": {
+      "type": ["object", "null"]
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "url"],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https?://"
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "provider",
+        "url",
+        "recordUrl",
+        "revision",
+        "fetchedAt",
+        "lastVerified",
+        "license",
+        "attribution"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "recordUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "revision": {
+          "type": ["string", "null"]
+        },
+        "fetchedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastVerified": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "license": {
+          "type": ["string", "null"]
+        },
+        "attribution": {
+          "type": ["object", "null"],
+          "required": ["name", "url", "licenseUrl", "changes"],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "licenseUrl": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "changes": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "original": {
+      "type": "object"
+    }
+  }
+}
