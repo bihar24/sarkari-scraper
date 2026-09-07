@@ -69,19 +69,37 @@ jobs:
       - name: Scrape job domains
         run: |
           mkdir -p data
+          ok=0
+          failed=0
           for d in $DOMAINS; do
-            node run-scrapper.js -d "$d" -f json -o "data/jobs-$d.json" \
-              --max-pages "$MAX_PAGES" --max-jobs "$MAX_JOBS" --quiet \
-              || echo "::warning::scrape failed for $d"
+            if node run-scrapper.js -d "$d" -f json -o "data/jobs-$d.json" \
+              --max-pages "$MAX_PAGES" --max-jobs "$MAX_JOBS" --quiet; then
+              ok=$((ok + 1))
+            else
+              failed=$((failed + 1))
+              echo "::warning::scrape failed for $d"
+            fi
           done
+          echo "job domains: $ok ok, $failed failed"
+          echo "JOBS_OK=$ok" >> "$GITHUB_ENV"
+          echo "JOBS_FAILED=$failed" >> "$GITHUB_ENV"
 
       - name: Scrape papers lists
         run: |
+          ok=0
+          failed=0
           for d in upsc.gov.in adda247.com; do
-            node scrap-paper-list.js -d "$d" -f json -o "data/papers-$d.json" \
-              --max-pages 5 --quiet \
-              || echo "::warning::papers list failed for $d"
+            if node scrap-paper-list.js -d "$d" -f json -o "data/papers-$d.json" \
+              --max-pages 5 --quiet; then
+              ok=$((ok + 1))
+            else
+              failed=$((failed + 1))
+              echo "::warning::papers list failed for $d"
+            fi
           done
+          echo "papers sources: $ok ok, $failed failed"
+          echo "PAPERS_OK=$ok" >> "$GITHUB_ENV"
+          echo "PAPERS_FAILED=$failed" >> "$GITHUB_ENV"
 
       - name: Build digest outputs
         run: |
@@ -117,6 +135,39 @@ jobs:
           name: scrape-data
           path: data/
           retention-days: 30
+
+      - name: Verify the sweep collected something
+        # Each domain is swallowed by a warning above so one dead site cannot
+        # sink the sweep - but that also meant a run where EVERY domain failed
+        # finished green and looked healthy. Fail loudly here instead, after
+        # the data has been committed and the artifact uploaded, so a red run
+        # still keeps whatever it managed to collect.
+        #
+        # Two distinct ways to collect nothing, both seen in run 34073580212
+        # (reported success, wrote jobs-all.json == []):
+        #   1. every domain exits non-zero, or
+        #   2. a domain exits 0 but yields an empty list - a rotted parser
+        #      still "succeeds", so exit codes alone are not enough.
+        # Papers sources are beta and bot-guarded, so they warn only.
+        run: |
+          collected=0
+          if [ -f data/jobs-all.json ]; then
+            collected=$(jq 'length' data/jobs-all.json 2>/dev/null || echo 0)
+          fi
+          echo "job domains: ${JOBS_OK:-0} ok / ${JOBS_FAILED:-0} failed"
+          echo "papers sources: ${PAPERS_OK:-0} ok / ${PAPERS_FAILED:-0} failed"
+          echo "job items collected: $collected"
+          if [ "${JOBS_OK:-0}" -eq 0 ]; then
+            echo "::error::every job domain failed (${JOBS_FAILED:-0} of them); parsers or upstream sites are broken"
+            exit 1
+          fi
+          if [ "$collected" -eq 0 ]; then
+            echo "::error::no job items collected from ${JOBS_OK:-0} domain(s) that exited cleanly; parsers have most likely rotted against the live HTML"
+            exit 1
+          fi
+          if [ "${PAPERS_OK:-0}" -eq 0 ]; then
+            echo "::warning::every papers source failed (beta sources, not failing the run)"
+          fi
 
       - name: Alert on failure
         # `secrets` is NOT available in `if:` conditions (parse-time

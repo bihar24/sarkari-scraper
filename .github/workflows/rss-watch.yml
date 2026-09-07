@@ -39,6 +39,13 @@ jobs:
 
       - name: Commit watcher state
         run: |
+          # No feeds enabled in feeds.txt means the watcher never writes a
+          # state file — that is a no-op run, not a failure. Without this
+          # guard `git add` aborts with "pathspec ... did not match any files".
+          if [ ! -f data/feed-state.json ]; then
+            echo "no state file written (no feeds configured); nothing to commit"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/feed-state.json
