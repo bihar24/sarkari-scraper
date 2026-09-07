@@ -1,11 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "regions": ["bom1"],
   "functions": {
     "api/index.js": {
       "maxDuration": 10,
-      "includeFiles": "{web,data}/**"
+      "includeFiles": "data/**"
     }
   },
   "redirects": [
@@ -22,7 +24,19 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/v1",
+      "destination": "/api"
+    },
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/feed.xml",
+      "destination": "/api"
+    },
+    {
+      "source": "/health",
       "destination": "/api"
     }
   ],
@@ -33,6 +47,10 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'"
         },
         {
           "key": "X-Content-Type-Options",

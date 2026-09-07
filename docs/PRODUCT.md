@@ -229,15 +229,22 @@ website deployment by this feature.
 
 ### Vercel and `rss.bihar24.com`
 
-The repository includes a Vercel Function entry point and routing in
-`vercel.json`. Vercel sends every public route to the exported request handler;
-the handler **does not call `listen()`**, write a file, scrape a website or make
-a network request. At cold start it builds an in-memory snapshot from the
-committed `data/jobs-all.json` and `data/papers-*.json` automation outputs.
-This is compatible with Vercel's read-only, ephemeral function filesystem.
+The repository includes an explicit static build and one Vercel Function.
+`npm run build` copies only the browser application from `web/` to `dist/`, so
+package source files can never become public output. Vercel serves `/` and the
+assets directly from that static output. Only `/api/v1`, `/feed.xml` and
+`/health` are rewritten to the function exported by `api/index.js`.
 
-1. Import this repository into Vercel with the **Other** framework preset. No
-   build or output-directory override is required.
+The function **does not call `listen()`**, write a file, scrape a website or
+make a network request. At cold start it builds an in-memory snapshot from the
+committed `data/jobs-all.json` and `data/papers-*.json` automation outputs.
+This is compatible with Vercel's read-only, ephemeral function filesystem and
+does not require Fluid Compute, cron jobs or any paid feature.
+
+1. Import this repository into Vercel with the **Other** framework preset. Keep
+   the repository root as the Root Directory. The committed `vercel.json`
+   supplies Build Command `npm run build` and Output Directory `dist`; do not
+   override them in Project Settings.
 2. In **Project → Settings → Domains**, add `rss.bihar24.com` and make it the
    production domain.
 3. At the DNS provider for `bihar24.com`, add the CNAME value shown by Vercel
@@ -245,6 +252,23 @@ This is compatible with Vercel's read-only, ephemeral function filesystem.
    value if it differs, then wait for its domain check and TLS certificate.
 4. Keep Git deployments enabled. A committed scrape update then produces a
    deployment with the latest snapshot; no scraper runs inside a web request.
+
+Use these Vercel Project Settings (repository configuration should show the
+same effective values):
+
+| Setting          | Value                                                    |
+| ---------------- | -------------------------------------------------------- |
+| Framework Preset | Other                                                    |
+| Root Directory   | `./`                                                     |
+| Install Command  | `npm ci` (or Vercel default with the committed lockfile) |
+| Build Command    | `npm run build`                                          |
+| Output Directory | `dist`                                                   |
+| Node.js          | 22.x or newer                                            |
+
+No Vercel environment variable is required for the public read-only site.
+Scrapes remain CLI/GitHub Actions jobs; configure their optional tokens only as
+GitHub Actions secrets or local environment variables. Never expose them with a
+`NEXT_PUBLIC_` or other browser-visible prefix.
 
 Production discovery URLs are fixed to the custom domain:
 
