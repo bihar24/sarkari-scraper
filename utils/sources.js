@@ -22,7 +22,11 @@ var SOURCES = {
     papers: null,
   },
   "sarkariresults.info": {
-    jobs: { status: "stable", notes: "" },
+    jobs: {
+      status: "disabled",
+      notes:
+        "Domain currently does not resolve / returns a parked page from GitHub Actions; kept for historical parser compatibility until a permitted replacement is found.",
+    },
     papers: null,
   },
   "freshersnow.com": {
@@ -149,7 +153,7 @@ function catalogRows() {
 
 function formatCatalog() {
   var lines = [
-    "Supported sources (status: stable | beta = needs live validation):",
+    "Supported sources (status: stable | beta = needs live validation | disabled = unavailable):",
     "",
   ];
   catalogRows().forEach(function (row) {

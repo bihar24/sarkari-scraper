@@ -213,6 +213,15 @@ async function main() {
     process.exit(1);
   }
 
+  if (result.blocked && result.items.length === 0) {
+    log.error(
+      "Blocked/error page detected while crawling " +
+        values.domain +
+        "; keeping the previous output file unchanged."
+    );
+    process.exit(1);
+  }
+
   var links = [];
   var skipped = 0;
   result.items.forEach(function (item) {

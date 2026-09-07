@@ -6,6 +6,32 @@
 
 var DETAIL_TYPES = ["String", "List", "Paragraph", "Link", "Table"];
 
+function usableJobItem(item) {
+  item = item || {};
+  return Boolean(
+    (item.postName || item.company || item.title) &&
+    item.link &&
+    /^https?:/i.test(String(item.link))
+  );
+}
+
+function usablePaperItem(item) {
+  item = item || {};
+  return Boolean(
+    (item.title || item.exam) &&
+    item.link &&
+    /^https?:/i.test(String(item.link))
+  );
+}
+
+function countUsableJobItems(items) {
+  return Array.isArray(items) ? items.filter(usableJobItem).length : 0;
+}
+
+function countUsablePaperItems(items) {
+  return Array.isArray(items) ? items.filter(usablePaperItem).length : 0;
+}
+
 function checkJobList(items) {
   var warnings = [];
   if (!Array.isArray(items)) {
@@ -19,7 +45,7 @@ function checkJobList(items) {
     if (item.link === undefined || item.link === null || item.link === "") {
       missingLink += 1;
     }
-    if (!item.postName && !item.company) {
+    if (!item.postName && !item.company && !item.title) {
       missingName += 1;
     }
   }
@@ -102,4 +128,8 @@ function checkJobDetail(records) {
 module.exports.checkJobList = checkJobList;
 module.exports.checkPaperList = checkPaperList;
 module.exports.checkJobDetail = checkJobDetail;
+module.exports.usableJobItem = usableJobItem;
+module.exports.usablePaperItem = usablePaperItem;
+module.exports.countUsableJobItems = countUsableJobItems;
+module.exports.countUsablePaperItems = countUsablePaperItems;
 module.exports.DETAIL_TYPES = DETAIL_TYPES;

@@ -2,8 +2,12 @@
 
 The original Sarkari Scraper / Explorer integration code remains under the
 [MIT licence](LICENSE). **That licence does not relicense imported data.**
-No source code, migrations, UI components, RTI PDFs, or full datasets from the
-projects below are vendored into this repository.
+No source code, migrations, UI components, or RTI PDFs from the projects below
+are vendored into this repository. The reviewed commit of the tracker is
+checked out during the scrape workflow (never on a Vercel request) and a
+derived `data/catalog.json` snapshot is committed so the read-only deployment
+has data. The derived snapshot retains the tracker's separate licence and
+attribution.
 
 ## Bihar Policy & Scheme Tracker
 

@@ -123,12 +123,19 @@ async function main() {
     ignoreRobots: values.ignoreRobots,
   });
 
-  if (sources.statusOf(values.domain, "jobs") === "beta") {
+  var jobStatus = sources.statusOf(values.domain, "jobs");
+  if (jobStatus === "beta") {
     log.warn(
       '"' +
         values.domain +
         '" is a beta source: validate results against the live site ' +
         "(see docs/SOURCES.md)."
+    );
+  } else if (jobStatus === "disabled") {
+    log.warn(
+      '"' +
+        values.domain +
+        '" is a disabled source; the scrape will usually fail and previous data will be retained.'
     );
   }
 
@@ -167,17 +174,22 @@ async function main() {
   log.info(
     "done: " + data.length + " jobs across " + result.pages + " page(s)."
   );
-  if (data.length === 0) {
-    log.warn(
-      "no jobs found. The site markup may have changed; " +
-        "the selectors in scripts/" +
-        values.domain +
-        "/job-list.js may need updating."
-    );
-  }
   validate.checkJobList(data).forEach(function (warning) {
     log.warn(warning);
   });
+  var usable = validate.countUsableJobItems(data);
+  if (usable === 0) {
+    log.error(
+      result.blocked
+        ? "Blocked/error page (not a valid job list) for " +
+            values.domain +
+            "; keeping the previous output file unchanged."
+        : "No usable job items for " +
+            values.domain +
+            ". The source returned no valid HTML records, so the previous output file is kept unchanged."
+    );
+    process.exit(1);
+  }
 
   var output;
   try {

@@ -3,9 +3,18 @@
 This directory is written by the GitHub Actions workflows
 (`.github/workflows/`) and committed back to the repo:
 
-- `jobs-<domain>.json` — raw run-scrapper output per job domain.
-- `jobs-all.json` — all domains merged (digest input).
-- `papers-<domain>.json` — exam/paper lists per papers domain.
+- `jobs-<domain>.json` — validated per-domain job snapshot. A source file is
+  replaced by the workflow only after the staged output has at least one
+  normalizable record; otherwise the previous committed file is retained.
+- `jobs-all.json` — aggregate built only from validated job snapshots. Never
+  replaced by `[]` while a previously non-empty aggregate exists.
+- `papers-<domain>.json` — validated exam/paper list snapshots (beta).
+- `papers-all.json` — aggregate of validated paper snapshots (beta).
+- `catalog.json` — the intentional deployment snapshot read by Vercel
+  (`catalog/deployment.js`). Generated in the scrape workflow from the
+  validated jobs/papers plus the pinned Bihar scheme tracker; it is never
+  written during a Vercel request.
+- `run-status.json` — latest per-source attempt/status metadata.
 - `digest.json`, `feed.xml`, `digest.ics` — digest outputs: enriched JSON,
   RSS 2.0 feed and deadline calendar.
 - `digest.state.json` — digest new-job diffing state (do not delete, or the

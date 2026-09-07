@@ -26,6 +26,42 @@ function readRunTimestamp(dataDirectory) {
   }
 }
 
+function readRunStatus(dataDirectory) {
+  var file = path.join(dataDirectory, "run-status.json");
+  try {
+    var value = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (value && Array.isArray(value.sources)) return value.sources;
+  } catch (error) {
+    // Missing/unreadable status is non-fatal; the committed catalogue still
+    // explains its own source health.
+  }
+  return [];
+}
+
+function applyRunStatus(catalogue, sources) {
+  sources.forEach(function (entry) {
+    if (!entry || typeof entry.domain !== "string") return;
+    var key = "scrape:" + entry.type + ":" + entry.domain;
+    var prior = catalogue.sources[key] || {};
+    catalogue.sources[key] = {
+      label: prior.label || entry.domain + " (" + entry.type + ")",
+      status: entry.status || "failed",
+      lastAttempt: entry.lastAttempt || prior.lastAttempt || null,
+      lastSuccess:
+        entry.status === "ok"
+          ? entry.lastAttempt || prior.lastSuccess || null
+          : prior.lastSuccess || null,
+      count: prior.count || 0,
+      error:
+        entry.status === "ok"
+          ? prior.error || null
+          : entry.error ||
+            prior.error ||
+            "This source produced no usable snapshot; previous data retained.",
+    };
+  });
+}
+
 function deploymentCatalogue(dataDirectory) {
   dataDirectory = path.resolve(dataDirectory);
   var prebuilt = path.join(dataDirectory, "catalog.json");
@@ -91,6 +127,7 @@ function deploymentCatalogue(dataDirectory) {
   // lastrun.json records the latest attempted sweep, including an empty or
   // partially failed one. Individual source status still explains whether any
   // records were usable.
+  applyRunStatus(catalogue, readRunStatus(dataDirectory));
   if (fs.existsSync(path.join(dataDirectory, "lastrun.json"))) {
     catalogue.updatedAt = stamp;
   }
@@ -100,4 +137,6 @@ function deploymentCatalogue(dataDirectory) {
 module.exports = {
   deploymentCatalogue: deploymentCatalogue,
   readRunTimestamp: readRunTimestamp,
+  readRunStatus: readRunStatus,
+  applyRunStatus: applyRunStatus,
 };

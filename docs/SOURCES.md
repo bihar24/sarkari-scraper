@@ -11,18 +11,21 @@ status means, what every source does, and what is wanted next.
   against the real site, compare with a browser, then report back
   (see `CONTRIBUTING.md` “validating a beta source”). Beta scrapes print a
   stderr warning on every run.
+- `disabled` — source is unavailable/parked/blocked from automated runners;
+  the parser is retained for historical compatibility but failures are
+  expected and previous valid data is retained.
 
 ## Jobs
 
-| Domain                  | Status | List entry                                           | How it works                                                                    |
-| ----------------------- | ------ | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `sarkariresult.com`     | stable | site homepage sections                               | Per-site selectors                                                              |
-| `sarkariexam.com`       | stable | site homepage sections                               | Per-site selectors                                                              |
-| `sarkariresults.info`   | stable | site homepage sections                               | Per-site selectors                                                              |
-| `freshersnow.com`       | stable | site homepage sections                               | Per-site selectors                                                              |
-| `freejobalert.com`      | beta   | `https://www.freejobalert.com/latest-notifications/` | Content-driven `/articles/` link harvest; detail via the generic article reader |
-| `employmentnews.gov.in` | beta   | `https://www.employmentnews.gov.in/`                 | Official weekly journal; generic harvest, needs live tuning                     |
-| `rojgarresult.com`      | beta   | `https://rojgarresult.com/`                          | Generic harvest, needs live tuning                                              |
+| Domain                  | Status   | List entry                                           | How it works                                                                    |
+| ----------------------- | -------- | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `sarkariresult.com`     | stable   | site homepage sections                               | Per-site selectors                                                              |
+| `sarkariexam.com`       | stable   | site homepage sections                               | Per-site selectors                                                              |
+| `sarkariresults.info`   | disabled | site homepage sections                               | Does not resolve / parked from automated runners; previous data retained        |
+| `freshersnow.com`       | stable   | site homepage sections                               | Per-site selectors                                                              |
+| `freejobalert.com`      | beta     | `https://www.freejobalert.com/latest-notifications/` | Content-driven `/articles/` link harvest; detail via the generic article reader |
+| `employmentnews.gov.in` | beta     | `https://www.employmentnews.gov.in/`                 | Official weekly journal; generic harvest, needs live tuning                     |
+| `rojgarresult.com`      | beta     | `https://rojgarresult.com/`                          | Generic harvest, needs live tuning                                              |
 
 ## Papers (previous-year question papers)
 

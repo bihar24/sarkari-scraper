@@ -145,11 +145,17 @@ function createRequestHandler(options) {
           "application/rss+xml; charset=utf-8"
         );
       } else if (target.pathname === "/health") {
+        var ready = catalogue.records.length > 0;
         send(readError ? 503 : 200, {
-          status: readError ? "degraded" : "ok",
-          ready: catalogue.records.length > 0,
+          status: readError ? "degraded" : ready ? "ok" : "degraded",
+          ready: ready,
           demo: catalogue.demo,
           updatedAt: catalogue.updatedAt,
+          catalogue: {
+            ready: ready,
+            total: catalogue.records.length,
+            kinds: query.stats(catalogue).kinds,
+          },
           error: readError,
         });
       } else if (target.pathname === "/api/v1") {

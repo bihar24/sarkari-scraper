@@ -20,6 +20,18 @@ describe("validate.checkJobList", function () {
     assert.match(warnings.join(" "), /no title/);
     assert.deepEqual(validate.checkJobList("nope").length, 1);
   });
+
+  it("counts only usable job list records", function () {
+    assert.equal(
+      validate.countUsableJobItems([
+        { postName: "A", link: "https://x/1" },
+        { link: "https://x/2" },
+        { postName: "B", link: "javascript:no" },
+        { company: "Office", link: "https://x/3" },
+      ]),
+      2
+    );
+  });
 });
 
 describe("validate.checkJobDetail", function () {
@@ -57,5 +69,15 @@ describe("validate.checkPaperList", function () {
     assert.match(warnings.join(" "), /no link/);
     assert.match(warnings.join(" "), /no title/);
     assert.deepEqual(validate.checkPaperList("nope").length, 1);
+  });
+
+  it("counts only usable paper list records", function () {
+    assert.equal(
+      validate.countUsablePaperItems([
+        { exam: "SSC CGL", link: "https://x/1" },
+        { link: "https://x/2" },
+      ]),
+      1
+    );
   });
 });
