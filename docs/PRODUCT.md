@@ -227,6 +227,41 @@ website deployment by this feature.
 
 ## Deployment
 
+### Vercel and `rss.bihar24.com`
+
+The repository includes a Vercel Function entry point and routing in
+`vercel.json`. Vercel sends every public route to the exported request handler;
+the handler **does not call `listen()`**, write a file, scrape a website or make
+a network request. At cold start it builds an in-memory snapshot from the
+committed `data/jobs-all.json` and `data/papers-*.json` automation outputs.
+This is compatible with Vercel's read-only, ephemeral function filesystem.
+
+1. Import this repository into Vercel with the **Other** framework preset. No
+   build or output-directory override is required.
+2. In **Project → Settings → Domains**, add `rss.bihar24.com` and make it the
+   production domain.
+3. At the DNS provider for `bihar24.com`, add the CNAME value shown by Vercel
+   for the `rss` host (commonly `cname.vercel-dns.com`). Use Vercel's displayed
+   value if it differs, then wait for its domain check and TLS certificate.
+4. Keep Git deployments enabled. A committed scrape update then produces a
+   deployment with the latest snapshot; no scraper runs inside a web request.
+
+Production discovery URLs are fixed to the custom domain:
+
+- Site: `https://rss.bihar24.com/`
+- RSS: `https://rss.bihar24.com/feed.xml`
+- Sitemap: `https://rss.bihar24.com/sitemap.xml`
+- Robots policy: `https://rss.bihar24.com/robots.txt`
+- API discovery: `https://rss.bihar24.com/api/v1`
+- Health: `https://rss.bihar24.com/health`
+
+The old `/rss.xml` path redirects permanently to `/feed.xml`. The API export at
+`/api/v1/export?format=rss` remains available as a downloadable filtered feed.
+Custom-domain attachment and DNS verification happen in Vercel/DNS settings;
+they cannot be completed by repository code alone.
+
+### Docker / persistent host
+
 ```sh
 docker compose up --build -d
 docker compose run --rm explorer node tools/catalog.js import --tracker-github

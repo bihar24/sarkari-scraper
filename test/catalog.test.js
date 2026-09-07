@@ -12,6 +12,7 @@ var store = require("../catalog/store");
 var imports = require("../catalog/importers");
 var query = require("../catalog/query");
 var server = require("../catalog/server");
+var deployment = require("../catalog/deployment");
 var demo = require("../catalog/demo");
 var digest = require("../utils/digest");
 var runtime = require("../utils/runtime");
@@ -504,6 +505,39 @@ test.describe("catalogue storage and imports", function () {
       assert.equal(cli(["--help"]).status, 0);
     }
   );
+  test.it(
+    "builds a Vercel-safe snapshot from committed automation outputs without writing",
+    function (t) {
+      var dir = temp(t);
+      fs.writeFileSync(
+        path.join(dir, "lastrun.json"),
+        JSON.stringify({ at: "2026-09-07T01:02:03Z" })
+      );
+      fs.writeFileSync(
+        path.join(dir, "jobs-all.json"),
+        JSON.stringify([
+          {
+            postName: "Fixture deployment job",
+            link: "https://example.gov.in/job/1",
+          },
+        ])
+      );
+      var snapshot = deployment.deploymentCatalogue(dir);
+      assert.equal(snapshot.records.length, 1);
+      assert.equal(snapshot.records[0].title.en, "Fixture deployment job");
+      assert.equal(
+        snapshot.records[0].source.fetchedAt,
+        "2026-09-07T01:02:03.000Z"
+      );
+      assert.equal(snapshot.updatedAt, "2026-09-07T01:02:03.000Z");
+      assert.equal(
+        fs.readdirSync(dir).some(function (name) {
+          return name.endsWith(".lock") || name === "catalog.json";
+        }),
+        false
+      );
+    }
+  );
 });
 
 test.describe("read-only public API", function () {
@@ -527,12 +561,29 @@ test.describe("read-only public API", function () {
     async function (t) {
       var base = await app(t);
       var home = await fetch(base);
-      assert.match(await home.text(), /Sarkari Explorer/);
+      var html = await home.text();
+      assert.match(html, /Sarkari Explorer/);
+      assert.match(html, /https:\/\/rss\.bihar24\.com\//);
+      assert.match(html, /rel="alternate"[\s\S]+application\/rss\+xml/);
       assert.match(
         home.headers.get("content-security-policy"),
         /script-src 'self'/
       );
       assert.equal(home.headers.get("x-frame-options"), null);
+      assert.match(
+        await (await fetch(base + "/robots.txt")).text(),
+        /Sitemap: https:\/\/rss\.bihar24\.com\/sitemap\.xml/
+      );
+      assert.match(
+        await (await fetch(base + "/sitemap.xml")).text(),
+        /<loc>https:\/\/rss\.bihar24\.com\/<\/loc>/
+      );
+      var socialCard = await fetch(base + "/social-card.png");
+      assert.equal(socialCard.headers.get("content-type"), "image/png");
+      assert.deepEqual(
+        Buffer.from(await socialCard.arrayBuffer()).subarray(1, 4),
+        Buffer.from("PNG")
+      );
       var font = await fetch(base + "/fonts/devanagari-400.woff2");
       assert.equal(font.headers.get("content-type"), "font/woff2");
       assert.equal(
@@ -642,6 +693,15 @@ test.describe("read-only public API", function () {
       assert.match(feed, /CC-BY-SA-4.0/);
       assert.match(feed, /&lt;script&gt;/);
       assert.doesNotMatch(feed, /<script>/);
+      var canonicalFeed = await fetch(base + "/feed.xml");
+      assert.equal(canonicalFeed.headers.get("content-disposition"), null);
+      assert.match(
+        await canonicalFeed.text(),
+        /Bihar24 RSS · Sarkari Explorer/
+      );
+      var oldFeed = await fetch(base + "/rss.xml", { redirect: "manual" });
+      assert.equal(oldFeed.status, 308);
+      assert.equal(oldFeed.headers.get("location"), "/feed.xml");
       assert.match(
         await (await fetch(base + "/api/v1/export?format=ics")).text(),
         /BEGIN:VCALENDAR/
@@ -686,6 +746,10 @@ test.describe("read-only public API", function () {
       assert.throws(function () {
         query.parseQuery(new URLSearchParams("income=999999999999999999"));
       });
+      assert.equal(
+        typeof require("..").catalogue.createRequestHandler,
+        "function"
+      );
       assert.equal(typeof require("..").catalogue.createServer, "function");
       assert.equal(typeof require("..").sources.requireListParser, "function");
     }

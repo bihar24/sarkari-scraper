@@ -1,4 +1,4 @@
-import type { Server } from "node:http";
+import type { RequestListener, Server } from "node:http";
 
 export type Kind = "job" | "scheme" | "policy" | "paper";
 export interface BilingualText {
@@ -316,6 +316,11 @@ export const catalogue: {
     ): Directory;
   };
   search(snapshot: Snapshot, filters?: Filters, now?: Date): Opportunity[];
+  createRequestHandler(options?: {
+    catalogue?: Snapshot;
+    file?: string;
+    publicUrl?: string;
+  }): RequestListener;
   createServer(options?: {
     catalogue?: Snapshot;
     file?: string;
