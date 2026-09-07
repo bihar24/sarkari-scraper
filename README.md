@@ -3,15 +3,43 @@
 [![CI](https://github.com/bihar24/sarkari-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/bihar24/sarkari-scraper/actions/workflows/ci.yml)
 [![Scrape](https://github.com/bihar24/sarkari-scraper/actions/workflows/scrape.yml/badge.svg)](https://github.com/bihar24/sarkari-scraper/actions/workflows/scrape.yml)
 [![RSS watch](https://github.com/bihar24/sarkari-scraper/actions/workflows/rss-watch.yml/badge.svg)](https://github.com/bihar24/sarkari-scraper/actions/workflows/rss-watch.yml)
-[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A Node.js web scraper that extracts government job listings and job details
 from supported job portals.
 
+## New: Sarkari Explorer
+
+A self-hostable, bilingual product layer now brings **jobs, schemes, policies
+and exam resources** together, with a searchable dashboard and read-only API.
+It integrates the Bihar Scheme Tracker's versioned YAML catalogue and supports
+an optional historical government-domain directory for source discovery.
+
+```sh
+npm ci
+npm run catalog:import -- --tracker-github
+npm start
+```
+
+Or try an offline, explicitly fictional preview with `npm run demo`.
+
+- Import our scraper outputs with `npm run catalog:import -- --jobs jobs.json`.
+- Search English/Hindi records, save items locally, inspect evidence and
+  verification dates, and export JSON, CSV, RSS or deadline calendars.
+- Use `/api/v1/opportunities` from your project, or the new side-effect-free
+  `require("sarkari-scraper").catalogue` Node API.
+- Import a local domain directory with `--domains 01-domains.md`. Directory
+  membership is **not** ownership verification or a crawl allowlist.
+
+**Read [the product guide](docs/PRODUCT.md) for setup, API, Docker, scheduling
+and limitations.** Our original code is MIT; imported tracker data remains
+**CC BY-SA 4.0** with attribution. See [third-party notices](THIRD_PARTY.md).
+Runtime data lives in gitignored `.sarkari/`, not in this repository.
+
 ## Installation
 
-Prerequisites: Node.js 18+ (`node --version`, see `.nvmrc`).
+Prerequisites: Node.js 22+ (`node --version`, see `.nvmrc`).
 
 **Clone and run** (recommended — full source, tests and docs):
 
@@ -32,7 +60,7 @@ sarkari-job-list -d sarkariresult.com
 After a global install (or `npm install` + `npx` inside the repo) these
 commands are available: `sarkari-job-list`, `sarkari-job-detail`,
 `sarkari-paper-list`, `sarkari-paper-detail`, `sarkari-scrape`,
-`sarkari-digest`. You can also run the scripts directly with `node`.
+`sarkari-digest`, and `sarkari-catalog`. You can also run the scripts directly with `node`.
 
 ## Supported sources
 
@@ -101,7 +129,7 @@ node scrap-job-detail.js -u https://www.sarkariresult.com/upsssc/01exam2018.php
 | `--retry-delay-ms` | Base retry delay in ms (default: `1000`)                   |
 | `--proxy`          | Proxy URL, e.g. `http://user:pass@host:8080`               |
 | `--ignore-robots`  | Skip the robots.txt check (default: respect it)            |
-| `--allow-external` | Allow off-site redirect targets without warning            |
+| `--allow-external` | Allow permitted off-site redirect targets                  |
 | `--list-sources`   | List supported sources and exit                            |
 | `--quiet`          | Log errors only                                            |
 | `--verbose, -v`    | Debug logging                                              |
@@ -151,7 +179,7 @@ node scrap-paper-detail.js -u https://www.adda247.com/jobs/ssc-cgl-previous-year
 | `--retry-delay-ms` | Base retry delay in ms (default: `1000`)               |
 | `--proxy`          | Proxy URL, e.g. `http://user:pass@host:8080`           |
 | `--ignore-robots`  | Skip the robots.txt check (default: respect it)        |
-| `--allow-external` | Allow off-site redirect targets without warning        |
+| `--allow-external` | Allow permitted off-site redirect targets              |
 | `--list-sources`   | List supported sources and exit                        |
 | `--quiet`          | Log errors only                                        |
 | `--verbose, -v`    | Debug logging                                          |
@@ -227,8 +255,9 @@ node job-digest.js -i jobs.json --alert telegram --summarize --translate hi \
 | `--db`        | Archive notified jobs in SQLite; Bloom filter skips re-alerts          |
 
 Credentials come from environment variables (`TELEGRAM_BOT_TOKEN` /
-`TELEGRAM_CHAT_ID`, `DISCORD_WEBHOOK_URL`, `WEBHOOK_URL`). The first run only
-initialises state; alerts start on the next run.
+`TELEGRAM_CHAT_ID`, `DISCORD_WEBHOOK_URL`, `WEBHOOK_URL`). The first non-dry run only
+initialises state; alerts start on the next run. Dry runs do not write alert
+state or notification archives.
 
 **RSS input:** any job-portal feed works — no scraper needed for that site:
 
@@ -265,7 +294,7 @@ a scrape via the `repository_dispatch` API.
 - **robots.txt**: respected by default (fetched once per origin, cached).
   Override with `--ignore-robots` only if the site permits it.
 - **Same-site guard**: pagination and job links that lead off-site are
-  skipped (override with `--allow-external`); off-site redirects warn.
+  skipped (override with `--allow-external`); off-site redirects are rejected before fetching unless explicitly allowed.
 - **Rate limiting**: requests are sequential with a 1.5s delay by default.
   Raise `--concurrency` cautiously — the tool caps it at 10.
 - **Proxies**: `--proxy http://user:pass@host:8080`, or set `HTTPS_PROXY` /
@@ -301,6 +330,8 @@ Project layout:
   worker pool, CSV formatting, validation, logging, enrichment,
   notifications, digest model, calendar/RSS builders, shared runtime,
   source registry, harvest/article engines
+- `catalog/`, `web/`, `tools/catalog.js` — normalized catalogue, read-only API,
+  bilingual dashboard and import CLI (see [docs/PRODUCT.md](docs/PRODUCT.md))
 - `tools/new-source.js` — beta-source scaffold (`npm run new-source`)
 - `tools/rss-watch.js` + `feeds.txt` — feed poller behind the RSS-watch workflow
 - `tools/notify-db.js`, `utils/notifydb.js`, `utils/bloom.js` — SQLite
@@ -324,5 +355,7 @@ Project layout:
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Original work © 2019 kaushalmeena;
-new contributions © 2026 Bihar24.
+MIT for the original code — see [LICENSE](LICENSE). Original work © 2019
+kaushalmeena; new contributions © 2026 Bihar24. Imported tracker data remains
+CC BY-SA 4.0, self-hosted fonts are SIL OFL 1.1, and scraped content retains
+its publisher’s rights. See [THIRD_PARTY.md](THIRD_PARTY.md).

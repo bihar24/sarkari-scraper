@@ -118,3 +118,6 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+
+# Imported catalogues and third-party datasets are runtime data, not MIT source.
+.sarkari/

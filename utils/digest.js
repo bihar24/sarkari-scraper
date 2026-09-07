@@ -160,16 +160,62 @@ function extractText(job) {
 }
 
 function extractDeadline(job) {
-  var detail = job.detail || [];
+  var detail = Array.isArray(job.detail) ? job.detail : [];
+  var label = /last\s+date|closing\s+date/i;
+  var datePattern =
+    /(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[-/ ](?:[A-Za-z]{3,9}|\d{1,2})[-/ ]\d{4})/;
+  function candidate(raw) {
+    raw = String(raw || "")
+      .trim()
+      .slice(0, 4000);
+    if (!raw) return null;
+    var matched = datePattern.exec(raw);
+    var value = matched ? matched[0] : raw;
+    return { raw: value, parsed: calendar.parseDeadline(value) };
+  }
+  // Prefer explicitly named fields, then inspect labels embedded in lists
+  // and table rows. Never interpret unrelated publication dates as deadlines.
   for (var i = 0; i < detail.length; i++) {
-    if (/last date|closing date/i.test(detail[i].key || "")) {
-      var raw = recordText(detail[i]).trim().split("\n")[0];
-      if (raw) {
-        return { raw: raw, parsed: calendar.parseDeadline(raw) };
-      }
+    if (detail[i] && label.test(detail[i].key || "")) {
+      var direct = candidate(recordText(detail[i]));
+      if (direct) return direct;
     }
   }
-  return null;
+  function scan(value, depth) {
+    if (depth > 8) return null;
+    if (typeof value === "string") {
+      var match = label.exec(value.slice(0, 4000));
+      return match
+        ? candidate(
+            value
+              .slice(match.index + match[0].length)
+              .replace(/^\s*[:—-]\s*/, "")
+          )
+        : null;
+    }
+    if (Array.isArray(value)) {
+      for (var j = 0; j < Math.min(value.length, 500); j++) {
+        var found = scan(value[j], depth + 1);
+        if (found && found.parsed) return found;
+      }
+      // Table cells may put the label and value in adjacent columns.
+      var joined = value
+        .map(function (cell) {
+          return typeof cell === "string"
+            ? cell
+            : cell && typeof cell.value === "string"
+              ? cell.value
+              : "";
+        })
+        .join(" ")
+        .slice(0, 4000);
+      return scan(joined, depth + 1);
+    }
+    return value && typeof value === "object"
+      ? scan(value.value, depth + 1)
+      : null;
+  }
+  return scan(detail, 0);
 }
 
 function extractPincodes(text) {
