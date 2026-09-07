@@ -13,7 +13,6 @@ module.exports = {
     store: require("./catalog/store"),
     importers: require("./catalog/importers"),
     search: require("./catalog/query").search,
-    createRequestHandler: require("./catalog/server").createRequestHandler,
     createServer: require("./catalog/server").createServer,
   },
 };

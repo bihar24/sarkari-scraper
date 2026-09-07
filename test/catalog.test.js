@@ -746,10 +746,6 @@ test.describe("read-only public API", function () {
       assert.throws(function () {
         query.parseQuery(new URLSearchParams("income=999999999999999999"));
       });
-      assert.equal(
-        typeof require("..").catalogue.createRequestHandler,
-        "function"
-      );
       assert.equal(typeof require("..").catalogue.createServer, "function");
       assert.equal(typeof require("..").sources.requireListParser, "function");
     }
