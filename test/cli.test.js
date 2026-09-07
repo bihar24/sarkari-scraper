@@ -157,7 +157,6 @@ describe("job-digest CLI", function () {
         state,
         "--alert",
         "telegram",
-        "--dry-run",
       ]);
       assert.equal(first.code, 0);
       assert.match(first.stderr, /state initialised/);
@@ -240,7 +239,7 @@ describe("job-digest CLI", function () {
 
       var first = await run(
         "job-digest.js",
-        base.concat(["--alert", "telegram", "--dry-run"])
+        base.concat(["--alert", "telegram"])
       );
       assert.equal(first.code, 0);
       assert.match(first.stderr, /loaded 2 job\(s\) \(2 from 1 feed\(s\)\)/);

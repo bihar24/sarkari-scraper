@@ -1,0 +1,13 @@
+services:
+  explorer:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      CATALOG_PUBLIC_URL: ${CATALOG_PUBLIC_URL:-}
+    volumes:
+      - catalogue:/app/.sarkari
+    restart: unless-stopped
+
+volumes:
+  catalogue:

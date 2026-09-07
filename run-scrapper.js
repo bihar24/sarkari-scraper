@@ -172,6 +172,11 @@ async function main() {
     fail(error.message);
   }
   log = rt.log;
+  var crawlClient = runtime.createCrawlClient(rt, {
+    domain: values.domain,
+    allowExternal: values.allowExternal,
+    ignoreRobots: values.ignoreRobots,
+  });
   var concurrency = clampConcurrency(values.concurrency, log);
 
   var jobList = require("./scripts/" + values.domain + "/job-list");
@@ -195,7 +200,7 @@ async function main() {
     result = await crawl.crawlJobList({
       scrapFn: jobList.scrapJobList,
       startUrl: jobList.jobListUrl,
-      client: rt.client,
+      client: crawlClient,
       maxPages: values.maxPages,
       delayMs: values.delayMs,
       sameSiteDomain: values.allowExternal ? null : values.domain,
@@ -249,17 +254,29 @@ async function main() {
     log.info("limited to first " + values.maxJobs + " job(s) (--max-jobs).");
   }
 
+  if (links.length === 0) {
+    log.error(
+      "No usable job links; keeping the previous output file unchanged."
+    );
+    process.exit(1);
+  }
+
   // Phase 2: scrape each job detail page (bounded concurrency, polite delay).
   var completed = 0;
   var results = await pool.runPool(
     links,
     async function (url) {
-      var response = await rt.client.get(url);
+      var response = await crawlClient.get(url);
       var pageUrl = http.finalUrl(response) || url;
       if (!values.allowExternal && !helper.isSameSite(pageUrl, values.domain)) {
         log.warn("page redirected off-site: " + pageUrl);
       }
       var detail = jobDetail.scrapJobDetail(response.data, pageUrl);
+      if (!Array.isArray(detail) || detail.length <= 1) {
+        throw new Error(
+          "Detail parser matched no content; review source markup."
+        );
+      }
       validate.checkJobDetail(detail).forEach(function (warning) {
         log.debug(pageUrl + ": " + warning);
       });

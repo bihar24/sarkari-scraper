@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore jobs, schemes, policies and exam resources with transparent sources. An independent, open-source catalogue."
+    />
+    <meta name="theme-color" content="#176452" />
+    <title>Sarkari Explorer · Public opportunities, clearly</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <a class="brand" href="/" aria-label="Sarkari Explorer home"
+        ><span class="brand-mark">स</span
+        ><span>Sarkari<span class="brand-sub">EXPLORER</span></span></a
+      >
+      <div class="sidebar-label" data-i18n="workspace">YOUR WORKSPACE</div>
+      <nav class="navigation">
+        <button class="nav-item active" data-view="explore">
+          <span data-icon="compass"></span
+          ><span data-i18n="explore">Explore opportunities</span
+          ><span class="nav-arrow">↗</span>
+        </button>
+        <button class="nav-item" data-view="saved">
+          <span data-icon="bookmark"></span
+          ><span data-i18n="saved">Saved collection</span
+          ><span id="saved-count" class="nav-count">0</span>
+        </button>
+        <div class="nav-divider"></div>
+        <div class="sidebar-label" data-i18n="underhood">BEHIND THE DATA</div>
+        <button class="nav-item" data-view="sources">
+          <span data-icon="layers"></span
+          ><span data-i18n="sources">Sources & coverage</span>
+        </button>
+        <button class="nav-item" data-view="developers">
+          <span data-icon="code"></span
+          ><span data-i18n="developers">Developer API</span>
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="open-note">
+          <span class="small-leaf" data-icon="sprout"></span
+          ><strong data-i18n="openTitle"
+            >Public information.<br />Open possibilities.</strong
+          >
+          <p data-i18n="openText">Built in the open, for everyone.</p>
+          <a
+            href="https://github.com/bihar24/sarkari-scraper"
+            target="_blank"
+            rel="noopener noreferrer"
+            ><span data-i18n="github">Explore the project</span> ↗</a
+          >
+        </div>
+        <div class="sidebar-foot">
+          <span class="tiny-dot"></span
+          ><span data-i18n="independent"
+            >Independent. Not a government service.</span
+          >
+        </div>
+      </div>
+    </aside>
+    <div class="shell">
+      <header class="topbar">
+        <div class="breadcrumb">
+          <button
+            id="menu-toggle"
+            class="icon-button mobile-menu"
+            aria-label="Toggle navigation"
+            aria-expanded="false"
+          >
+            <span data-icon="menu"></span></button
+          ><span class="breadcrumb-icon" data-icon="globe"></span
+          ><span data-i18n="atlas">Public opportunity atlas</span
+          ><span class="slash">/</span
+          ><strong id="breadcrumb-current">Explore</strong>
+        </div>
+        <div class="topbar-actions">
+          <span class="snapshot-state" id="snapshot-state"
+            >Loading catalogue…</span
+          ><button
+            class="language-button"
+            id="language-toggle"
+            aria-label="Switch language"
+          >
+            <span data-icon="language"></span
+            ><span id="language-label">हिन्दी</span>
+          </button>
+        </div>
+      </header>
+      <main id="main" tabindex="-1">
+        <div id="notice" class="notice" hidden></div>
+        <section id="hero" class="hero">
+          <div class="hero-copy">
+            <div class="eyebrow">
+              <span class="tiny-dot"></span
+              ><span data-i18n="eyebrow">INFORMATION THAT OPENS DOORS</span>
+            </div>
+            <h1 data-i18n="heroTitle">
+              One place.<br /><span>More possibilities.</span>
+            </h1>
+            <p data-i18n="heroText">
+              Discover jobs, schemes and learning resources.<br />Know the
+              source. Make your next move.
+            </p>
+            <a class="hero-link" href="/api/v1/export?format=rss"
+              ><span data-icon="rss"></span
+              ><span data-i18n="subscribe">Follow the opportunity feed</span
+              ><span>↗</span></a
+            >
+          </div>
+          <div class="hero-illustration" aria-hidden="true">
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+            <div class="orbit orbit-three"></div>
+            <div class="orbit-point point-one"></div>
+            <div class="orbit-point point-two"></div>
+            <div class="orbit-center">
+              <span class="hero-monogram">स</span
+              ><span class="orbit-caption">A WORLD OF<br />OPPORTUNITY</span>
+            </div>
+            <div class="floating-card float-one">
+              <span data-icon="briefcase"></span
+              ><span>Build your future<small>JOBS & SKILLS</small></span>
+            </div>
+            <div class="floating-card float-two">
+              <span data-icon="sprout"></span
+              ><span>Find your support<small>SCHEMES & BENEFITS</small></span>
+            </div>
+            <span class="illustration-coordinate"
+              >25.59° N &nbsp; 85.13° E &nbsp; · &nbsp; BIHAR, INDIA</span
+            >
+          </div>
+        </section>
+        <section
+          id="stats"
+          class="stats"
+          aria-label="Catalogue totals"
+        ></section>
+        <section class="explorer-section" id="explore-view">
+          <div class="section-heading">
+            <div>
+              <div class="section-eyebrow" data-i18n="curated">
+                YOUR NEXT CHAPTER
+              </div>
+              <h2 id="section-title">Find an opportunity</h2>
+            </div>
+            <a
+              class="subtle-link"
+              id="download-json"
+              href="/api/v1/export?format=json"
+              ><span data-icon="download"></span
+              ><span data-i18n="export">Export data</span></a
+            >
+          </div>
+          <div
+            class="tabs"
+            id="kind-tabs"
+            role="group"
+            aria-label="Opportunity type"
+          ></div>
+          <form id="search-form" class="search-toolbar" role="search">
+            <div class="search-box">
+              <span data-icon="search"></span
+              ><input
+                id="search"
+                name="q"
+                type="search"
+                autocomplete="off"
+                placeholder="Search schemes, jobs, exams…"
+                aria-label="Search opportunities"
+              /><kbd>/</kbd>
+            </div>
+            <label class="select-wrap"
+              ><span data-icon="pin"></span
+              ><select id="region-filter" aria-label="Region">
+                <option value="">All regions</option>
+                <option value="bihar">Bihar</option>
+                <option value="india">India-wide</option>
+              </select></label
+            ><button
+              type="button"
+              class="filter-button"
+              id="filter-toggle"
+              aria-expanded="false"
+            >
+              <span data-icon="sliders"></span
+              ><span data-i18n="filters">Filters</span
+              ><span class="filter-dot" id="filter-dot" hidden></span>
+            </button>
+          </form>
+          <div class="advanced-filters" id="advanced-filters" hidden>
+            <label
+              ><span data-i18n="persona">Looking for</span
+              ><select id="persona-filter" aria-label="Persona">
+                <option value="">Everyone</option>
+                <option value="student">Students</option>
+                <option value="unemployed_youth">Job seekers</option>
+                <option value="farmer">Farmers</option>
+                <option value="self_employed_entrepreneur">
+                  Entrepreneurs
+                </option>
+                <option value="senior_citizen">Senior citizens</option>
+                <option value="worker_labourer">Workers</option>
+              </select></label
+            ><label
+              ><span data-i18n="sourceType">Source type</span
+              ><select id="namespace-filter" aria-label="Source classification">
+                <option value="">All source types</option>
+                <option value="government_namespace">
+                  gov.in / nic.in namespace
+                </option>
+                <option value="historical_directory">
+                  Historical directory only
+                </option>
+                <option value="unclassified">Other / unclassified</option>
+              </select></label
+            ><label
+              ><span data-i18n="review">Review freshness</span
+              ><select id="freshness-filter" aria-label="Review freshness">
+                <option value="">Any review date</option>
+                <option value="recently_reviewed">
+                  Reviewed within 90 days
+                </option>
+                <option value="needs_review">Needs a new review</option>
+                <option value="unverified">Not independently reviewed</option>
+              </select></label
+            ><button
+              type="button"
+              class="text-button"
+              id="clear-filters"
+              data-i18n="clear"
+            >
+              Reset filters
+            </button>
+            <p data-i18n="matchNote">
+              Matching is based on recorded criteria, not a confirmation of
+              eligibility.
+            </p>
+          </div>
+          <div
+            class="category-chips"
+            id="category-chips"
+            role="group"
+            aria-label="Categories"
+          ></div>
+          <div class="results-meta">
+            <p id="results-count" role="status" aria-live="polite">
+              Loading opportunities…
+            </p>
+            <span data-i18n="sourceLed">Source-linked. No guesswork.</span>
+          </div>
+          <div id="results" class="results-grid" aria-busy="true"></div>
+          <div id="pagination" class="pagination"></div>
+        </section>
+        <section id="sources-view" hidden></section>
+        <section id="developers-view" hidden></section>
+        <footer class="main-footer">
+          <div>
+            <span class="footer-mark">स</span
+            ><span data-i18n="footer"
+              >A little more clarity. A lot more possibility.</span
+            >
+          </div>
+          <p data-i18n="footerNote">
+            Always confirm details with the original source. This is an
+            independent catalogue.
+          </p>
+          <p class="credits">
+            Scheme & policy data:
+            <a
+              href="https://yojana.bodhya.net"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Vishal Arya / Bodhya</a
+            >
+            ·
+            <a
+              href="https://creativecommons.org/licenses/by-sa/4.0/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >CC BY-SA 4.0</a
+            >. Original integration code: MIT.
+          </p>
+        </footer>
+      </main>
+    </div>
+    <dialog id="detail-dialog" aria-labelledby="detail-title">
+      <div class="dialog-shell">
+        <button
+          class="dialog-close icon-button"
+          id="close-detail"
+          aria-label="Close details"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <div id="detail-content"></div>
+      </div>
+    </dialog>
+    <div class="toast" id="toast" role="status" hidden></div>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+.git
+node_modules
+.cache
+.sarkari
+coverage
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+*.log

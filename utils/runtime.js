@@ -133,3 +133,48 @@ module.exports.networkFlagSpecs = networkFlagSpecs;
 module.exports.delayFlagSpec = delayFlagSpec;
 module.exports.createRuntime = createRuntime;
 module.exports.ensureRobotsAllowed = ensureRobotsAllowed;
+
+// Dedicated GET-only crawler wrapper. API/enrichment clients stay separate.
+// Axios automatic redirects bypass robots checks, so follow them explicitly.
+function createCrawlClient(rt, options) {
+  options = options || {};
+  var helper = require("./helper");
+  return {
+    get: async function (target) {
+      var current = target;
+      for (var hop = 0; hop <= 5; hop++) {
+        if (!helper.isHttpUrl(current))
+          throw new Error("Refusing non-HTTP crawl URL.");
+        if (
+          !options.allowExternal &&
+          options.domain &&
+          !helper.isSameSite(current, options.domain)
+        ) {
+          throw new Error("Refusing off-site crawl or redirect: " + current);
+        }
+        var allowed = await ensureRobotsAllowed(rt.robots, current, {
+          ignore: options.ignoreRobots,
+          log: rt.log,
+        });
+        if (!allowed) throw new Error("Blocked by robots.txt: " + current);
+        var response = await rt.client.get(current, {
+          maxRedirects: 0,
+          validateStatus: function (status) {
+            return (
+              (status >= 200 && status < 300) ||
+              [301, 302, 303, 307, 308].indexOf(status) !== -1
+            );
+          },
+        });
+        if ([301, 302, 303, 307, 308].indexOf(response.status) === -1)
+          return response;
+        var location = response.headers && response.headers.location;
+        if (!location) throw new Error("Redirect has no Location header.");
+        current = new URL(location, current).toString();
+      }
+      throw new Error("Too many crawl redirects.");
+    },
+  };
+}
+
+module.exports.createCrawlClient = createCrawlClient;

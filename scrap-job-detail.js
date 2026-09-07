@@ -128,6 +128,11 @@ async function main() {
     fail(error.message);
   }
   log = rt.log;
+  var crawlClient = runtime.createCrawlClient(rt, {
+    domain: resolved.domain,
+    allowExternal: values.allowExternal,
+    ignoreRobots: values.ignoreRobots,
+  });
 
   if (sources.statusOf(resolved.domain, "jobs") === "beta") {
     log.warn(
@@ -150,7 +155,7 @@ async function main() {
 
   var data;
   try {
-    var response = await rt.client.get(resolved.url);
+    var response = await crawlClient.get(resolved.url);
     var pageUrl = http.finalUrl(response) || resolved.url;
     if (!values.allowExternal && !helper.isSameSite(pageUrl, resolved.domain)) {
       log.warn("page redirected off-site to " + pageUrl);

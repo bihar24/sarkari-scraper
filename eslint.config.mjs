@@ -2,7 +2,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["node_modules/", "coverage/"],
+    ignores: ["node_modules/", "coverage/", ".cache/", ".sarkari/"],
   },
   {
     files: ["**/*.js"],
@@ -19,5 +19,9 @@ export default [
       "no-redeclare": "error",
       eqeqeq: ["error", "always", { null: "ignore" }],
     },
+  },
+  {
+    files: ["web/**/*.js"],
+    languageOptions: { globals: { ...globals.browser } },
   },
 ];
