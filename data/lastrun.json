@@ -1,6 +1,6 @@
 {
-  "at": "2026-09-07T01:37:10.252Z",
-  "trigger": "schedule",
+  "at": "2026-09-07T17:00:04.608Z",
+  "trigger": "workflow_dispatch",
   "reason": "",
   "domains": [
     "sarkariresult.com",
