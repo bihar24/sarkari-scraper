@@ -15,6 +15,7 @@
     "sarkari-catalog": "./tools/catalog.js"
   },
   "scripts": {
+    "build": "node tools/build-site.js",
     "test": "node --test test/*.test.js",
     "coverage": "node --test --experimental-test-coverage test/*.test.js",
     "lint": "eslint .",

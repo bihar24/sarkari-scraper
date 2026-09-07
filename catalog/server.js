@@ -20,12 +20,20 @@ var STATIC = {
   "/fonts/devanagari-400.woff2": ["fonts/devanagari-400.woff2", "font/woff2"],
   "/fonts/devanagari-600.woff2": ["fonts/devanagari-600.woff2", "font/woff2"],
   "/": ["index.html", "text/html; charset=utf-8"],
+  "/index.html": ["index.html", "text/html; charset=utf-8"],
   "/app.js": ["app.js", "text/javascript; charset=utf-8"],
   "/styles.css": ["styles.css", "text/css; charset=utf-8"],
   "/favicon.svg": ["favicon.svg", "image/svg+xml"],
+  "/robots.txt": ["robots.txt", "text/plain; charset=utf-8"],
+  "/sitemap.xml": ["sitemap.xml", "application/xml; charset=utf-8"],
+  "/site.webmanifest": [
+    "site.webmanifest",
+    "application/manifest+json; charset=utf-8",
+  ],
+  "/social-card.png": ["social-card.png", "image/png"],
 };
 
-function createServer(options) {
+function createRequestHandler(options) {
   options = options || {};
   var snapshot = options.catalogue
     ? store.validate(options.catalogue)
@@ -58,9 +66,13 @@ function createServer(options) {
     return snapshot;
   }
 
-  return net.createServer(function (req, res) {
+  return function requestHandler(req, res) {
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Referrer-Policy", "no-referrer");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader(
+      "Permissions-Policy",
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    );
     res.setHeader(
       "Content-Security-Policy",
       "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'"
@@ -104,24 +116,35 @@ function createServer(options) {
       send(400, { error: "Invalid URL." });
       return;
     }
+    if (target.pathname.startsWith("/api/")) {
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    }
     try {
       if (Object.prototype.hasOwnProperty.call(STATIC, target.pathname)) {
         var asset = STATIC[target.pathname];
-        send(
-          200,
-          fs.readFileSync(
-            path.join(webRoot, asset[0]),
-            asset[1] === "font/woff2" ? null : "utf8"
-          ),
-          asset[1]
-        );
+        send(200, fs.readFileSync(path.join(webRoot, asset[0])), asset[1]);
         return;
       }
       var catalogue = current();
       var directory = new Set(
         catalogue.directory ? catalogue.directory.domains : []
       );
-      if (target.pathname === "/health") {
+      if (target.pathname === "/rss.xml") {
+        res.setHeader("Location", "/feed.xml");
+        send(308, "", "text/plain; charset=utf-8");
+      } else if (target.pathname === "/feed.xml") {
+        send(
+          200,
+          buildFeed(
+            query
+              .search(catalogue, query.parseQuery(target.searchParams))
+              .slice(0, 1000),
+            publicUrl,
+            catalogue.updatedAt
+          ),
+          "application/rss+xml; charset=utf-8"
+        );
+      } else if (target.pathname === "/health") {
         send(readError ? 503 : 200, {
           status: readError ? "degraded" : "ok",
           ready: catalogue.records.length > 0,
@@ -131,7 +154,7 @@ function createServer(options) {
         });
       } else if (target.pathname === "/api/v1") {
         send(200, {
-          name: "Sarkari Explorer",
+          name: "Bihar24 RSS · Sarkari Explorer",
           version: "v1",
           schemaVersion: model.VERSION,
           readOnly: true,
@@ -309,21 +332,7 @@ function createServer(options) {
         } else if (format === "rss") {
           send(
             200,
-            rss.buildRss({
-              title: "Sarkari Explorer",
-              link: publicUrl,
-              description:
-                "Public opportunities. Community catalogue; always check original sources.",
-              items: exported.map(function (r) {
-                return {
-                  title: r.title.en,
-                  link: r.url,
-                  guid: r.id,
-                  description: (r.summary.en || "") + attributionText(r),
-                  pubDate: new Date(r.source.fetchedAt),
-                };
-              }),
-            }),
+            buildFeed(exported, publicUrl, catalogue.updatedAt),
             "application/rss+xml; charset=utf-8"
           );
         } else {
@@ -365,6 +374,29 @@ function createServer(options) {
             "Unable to serve this request. Check the catalogue and server setup.",
         });
     }
+  };
+}
+
+function createServer(options) {
+  return net.createServer(createRequestHandler(options));
+}
+
+function buildFeed(records, publicUrl, updatedAt) {
+  return rss.buildRss({
+    title: "Bihar24 RSS · Sarkari Explorer",
+    link: publicUrl,
+    description:
+      "Source-linked government jobs, schemes, policies and exam resources for Bihar and India. Always confirm details with the original publisher.",
+    builtAt: updatedAt ? new Date(updatedAt) : undefined,
+    items: records.map(function (record) {
+      return {
+        title: record.title.en,
+        link: record.url,
+        guid: record.id,
+        description: (record.summary.en || "") + attributionText(record),
+        pubDate: new Date(record.source.fetchedAt),
+      };
+    }),
   });
 }
 
@@ -384,4 +416,7 @@ function attributionText(record) {
     : "\nRights in source content remain with its publisher.";
 }
 
-module.exports = { createServer: createServer };
+module.exports = {
+  createRequestHandler: createRequestHandler,
+  createServer: createServer,
+};

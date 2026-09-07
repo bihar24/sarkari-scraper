@@ -1,0 +1,21 @@
+{
+  "name": "Bihar24 RSS · Sarkari Explorer",
+  "short_name": "Bihar24 RSS",
+  "description": "Source-linked government jobs, schemes, policies and exam resources for Bihar and India.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f8f2",
+  "theme_color": "#176452",
+  "lang": "en-IN",
+  "categories": ["news", "education", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

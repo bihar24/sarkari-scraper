@@ -32,8 +32,12 @@ Or try an offline, explicitly fictional preview with `npm run demo`.
 - Import a local domain directory with `--domains 01-domains.md`. Directory
   membership is **not** ownership verification or a crawl allowlist.
 
-**Read [the product guide](docs/PRODUCT.md) for setup, API, Docker, scheduling
-and limitations.** Our original code is MIT; imported tracker data remains
+**Read [the product guide](docs/PRODUCT.md) for setup, API, Vercel/custom-domain
+configuration, Docker, scheduling and limitations.** The Vercel build publishes
+only the browser app, while one serverless handler provides `/feed.xml`,
+`/health` and the read-only API without starting a long-running server. Our
+original code is MIT;
+imported tracker data remains
 **CC BY-SA 4.0** with attribution. See [third-party notices](THIRD_PARTY.md).
 Runtime data lives in gitignored `.sarkari/`, not in this repository.
 
